@@ -1,0 +1,1 @@
+var e=e=>e.trim().toLowerCase().replace(/\s+/g,` `),t=(t,n,r)=>{let i=e(n);return i.length===0?t:t.filter(e=>r(e).toLowerCase().includes(i))},n=t=>e(t).length===0;export{n,t};
