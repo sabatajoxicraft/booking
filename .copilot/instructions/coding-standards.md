@@ -16,6 +16,10 @@
 - **Check:** critical actions remain visually clear, state feedback is explicit, and key decision context is available at the point of action.
 - **Failure condition:** visual ambiguity, hidden primary actions, or interaction regressions that increase completion friction.
 
+## Research Strategy (evidence-led alignment)
+- **Check:** model/tool/workflow recommendations are backed by current external evidence and mapped to explicit handoff ownership.
+- **Failure condition:** unsupported trend claims, unclear handoff ownership, or governance bypass in proposed flow updates.
+
 ## Flow Integrity
 - **Check:** all booking states expose valid next actions and terminal-state rules.
 - **Failure condition:** dead-end states, hidden transitions, or mutable terminal states.
