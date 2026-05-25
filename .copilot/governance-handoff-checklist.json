@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "milestone": "M4",
+  "updatedAt": "2026-05-25T02:00:00Z",
+  "status": "pass",
+  "handoffs": [
+    {
+      "id": "research-to-reviewer",
+      "from": "Research Specialist",
+      "to": "Reviewer",
+      "trigger": "Agent workflow, model strategy, or best-practice alignment changes are proposed",
+      "inputs": [
+        "External trend and model evidence",
+        "Current instruction hierarchy and trigger matrix"
+      ],
+      "outputs": [
+        "Evidence-backed recommendation set",
+        "Adoption rationale and governance impact"
+      ],
+      "gates": [
+        ".github/agents/research-strategy-gate.md"
+      ]
+    },
+    {
+      "id": "ux-to-reviewer",
+      "from": "UX/UI Specialist",
+      "to": "Reviewer",
+      "trigger": "UX flow clarity, visual hierarchy, or interaction consistency degrades",
+      "inputs": [
+        "Interaction and layout deltas",
+        "State feedback behavior"
+      ],
+      "outputs": [
+        "UX risk report",
+        "Visual/action clarity remediation"
+      ],
+      "gates": [
+        ".github/agents/ui-ux-specialist-gate.md",
+        ".github/agents/brand-consistency-gate.md"
+      ]
+    },
+    {
+      "id": "architect-to-reviewer",
+      "from": "Architect",
+      "to": "Reviewer",
+      "trigger": "Flow, structural, or duplication-affecting implementation changes",
+      "inputs": [
+        "Implementation diff and affected surfaces",
+        "Canonical PRD flow references"
+      ],
+      "outputs": [
+        "Simplicity/duplication/composition compliance evidence",
+        "Flow transition validity evidence"
+      ],
+      "gates": [
+        ".github/agents/kiss-gate.md",
+        ".github/agents/dry-gate.md",
+        ".github/agents/atomic-design-gate.md",
+        ".github/agents/flow-integrity-gate.md"
+      ]
+    },
+    {
+      "id": "reviewer-to-buildbot",
+      "from": "Reviewer",
+      "to": "BuildBot",
+      "trigger": "All specialist gate checks pass and candidate is merge/release ready",
+      "inputs": [
+        "Specialist gate outcomes",
+        "Required remediation list (if any)"
+      ],
+      "outputs": [
+        "Gate pass/fail summary",
+        "Execution checklist for CI and release checks"
+      ],
+      "gates": [
+        ".github/agents/release-governance-gate.md"
+      ]
+    }
+  ],
+  "evidenceSchema": {
+    "requiredFields": [
+      "schemaVersion",
+      "milestone",
+      "updatedAt",
+      "status",
+      "handoffs"
+    ],
+    "handoffRequiredFields": [
+      "id",
+      "from",
+      "to",
+      "trigger",
+      "inputs",
+      "outputs",
+      "gates"
+    ],
+    "statusValues": [
+      "pass",
+      "fail"
+    ]
+  }
+}

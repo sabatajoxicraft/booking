@@ -1,0 +1,24 @@
+{
+  "generatedAt": "2026-05-25T02:05:42.711Z",
+  "status": "pass",
+  "checkedBoards": [
+    "M1",
+    "M2",
+    "M3",
+    "M4"
+  ],
+  "activeMilestone": "M4",
+  "requiredReleasedTags": [
+    {
+      "milestone": "M2",
+      "tag": "M2-complete",
+      "marker": "**M2 (Feature wave):** ✅ Complete and released"
+    },
+    {
+      "milestone": "M3",
+      "tag": "M3-complete",
+      "marker": "**M3 (Optimization and readiness):** ✅ Complete and released"
+    }
+  ],
+  "errors": []
+}

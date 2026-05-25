@@ -1,0 +1,16 @@
+{
+  "generatedAt": "2026-05-25T02:05:41.437Z",
+  "status": "pass",
+  "coveredGates": [
+    ".github/agents/atomic-design-gate.md",
+    ".github/agents/brand-consistency-gate.md",
+    ".github/agents/dry-gate.md",
+    ".github/agents/flow-integrity-gate.md",
+    ".github/agents/kiss-gate.md",
+    ".github/agents/release-governance-gate.md",
+    ".github/agents/research-strategy-gate.md",
+    ".github/agents/ui-ux-specialist-gate.md"
+  ],
+  "missingCoverage": [],
+  "errors": []
+}

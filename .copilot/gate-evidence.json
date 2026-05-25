@@ -163,16 +163,21 @@
    "M3 Provider Ops: provider dashboard includes day-plan summary cards and guarded bulk cancellation action.",
    "M3 Reliability: service health indicators shown on both customer and provider surfaces with fallback messaging.",
    "M3 Reliability: automated release readiness check added (`npm run release:readiness`) and enforced in CI workflow.",
-   "M3 Validation: npm run lint, npm run build, and npm run release:readiness all passed."
+   "M3 Validation: npm run lint, npm run build, and npm run release:readiness all passed.",
+   "M4-G1: Added .copilot/governance-handoff-checklist.json with explicit cross-gate handoff contract and evidence schema.",
+   "M4-G2: Added scripts/trigger-coverage-audit.mjs and CI-wired governance audit command to detect missing/duplicate specialist trigger mappings.",
+   "M4-D1: Added scripts/milestone-close-check.mjs to enforce board consistency and release-tag validation for released milestones.",
+   "M4-R1: Added .copilot/production-smoke-playbook.md and .copilot/.lane-audits/production-smoke-latest.json with schema-validated pass/fail capture.",
+   "M4 Validation: npm run governance:audit and npm run release:readiness pass with no governance drift."
   ],
   "gatesSummary": {
    "checkpoint": "C2 - Specialist Gate Sweep",
-   "timestamp": "2026-05-25T01:25:00Z",
+   "timestamp": "2026-05-25T02:00:00Z",
    "total": 6,
    "passing": 6,
    "failing": 0,
    "requirements": "≥5/6 gates pass for acceptance",
    "overallStatus": "PASS",
-   "nextStep": "C3 CI validation and merge to main"
+   "nextStep": "M4-C1 integrated governance merge and specialist sweep"
   }
 }

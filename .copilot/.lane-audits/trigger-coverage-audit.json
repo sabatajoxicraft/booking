@@ -1,0 +1,64 @@
+{
+  "generatedAt": "2026-05-25T02:05:41.484Z",
+  "status": "pass",
+  "gatesInRepository": [
+    ".github/agents/atomic-design-gate.md",
+    ".github/agents/brand-consistency-gate.md",
+    ".github/agents/dry-gate.md",
+    ".github/agents/flow-integrity-gate.md",
+    ".github/agents/kiss-gate.md",
+    ".github/agents/release-governance-gate.md",
+    ".github/agents/research-strategy-gate.md",
+    ".github/agents/ui-ux-specialist-gate.md"
+  ],
+  "triggerTargets": [
+    {
+      "gate": ".github/agents/kiss-gate.md",
+      "count": 1
+    },
+    {
+      "gate": ".github/agents/dry-gate.md",
+      "count": 1
+    },
+    {
+      "gate": ".github/agents/atomic-design-gate.md",
+      "count": 1
+    },
+    {
+      "gate": ".github/agents/ui-ux-specialist-gate.md",
+      "count": 1
+    },
+    {
+      "gate": ".github/agents/research-strategy-gate.md",
+      "count": 1
+    },
+    {
+      "gate": ".github/agents/flow-integrity-gate.md",
+      "count": 1
+    },
+    {
+      "gate": ".github/agents/brand-consistency-gate.md",
+      "count": 1
+    },
+    {
+      "gate": ".github/agents/release-governance-gate.md",
+      "count": 1
+    }
+  ],
+  "hierarchyTargets": [
+    ".github/agents/kiss-gate.md",
+    ".github/agents/dry-gate.md",
+    ".github/agents/atomic-design-gate.md",
+    ".github/agents/ui-ux-specialist-gate.md",
+    ".github/agents/research-strategy-gate.md",
+    ".github/agents/flow-integrity-gate.md",
+    ".github/agents/brand-consistency-gate.md",
+    ".github/agents/release-governance-gate.md"
+  ],
+  "missingInTriggers": [],
+  "duplicateTriggerTargets": [],
+  "unknownTriggerTargets": [],
+  "missingInHierarchy": [],
+  "unknownHierarchyTargets": [],
+  "errors": []
+}
