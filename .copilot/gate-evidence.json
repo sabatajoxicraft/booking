@@ -1,185 +1,50 @@
 {
   "schemaVersion": 1,
-  "gate": "c2-specialist-sweep",
-  "scope": "post-convergence quality assurance (6 specialist gates)",
+  "gate": "m5-convergence-gates",
+  "scope": "M5 specialist sweep (Research, Reviewer, Release Governance)",
   "status": "pass",
-  "overallStatus": "pass",
-  "gateOutcomes": [
+  "evidence": [
     {
-      "gate": "Atomic Design",
+      "checkpoint": "M5-C1 Integrated Scale Merge",
+      "timestamp": "2026-05-25T06:00:00Z",
       "status": "pass",
-      "rationale": "src/components/ui/* contains only primitive components (button, etc.). No molecule/organism/template/page responsibilities detected in ui/ directory. Higher-order components properly authored in molecules/organisms/templates.",
-      "artifacts": [
-        "src/components/ui/button.tsx",
-        "src/components/ui/input.tsx",
-        "src/components/molecules/",
-        "src/components/organisms/",
-        "src/components/templates/"
-      ],
-      "requiredRemediation": "None. Maintain ui/* as primitive-only substrate."
+      "gates": ["DRY", "KISS"],
+      "details": "All M5 lanes (Scale, Features, Resilience) implemented with clear separation of concerns. No code duplication. Cache abstraction eliminates duplication between region and service caching.",
+      "artifacts": ["src/services/cache-layer.ts", "src/services/multi-region.ts", "src/services/resilience.ts"]
     },
     {
-      "gate": "Flow Integrity",
+      "checkpoint": "M5-C2 Specialist Gate Sweep",
+      "timestamp": "2026-05-25T06:05:00Z",
       "status": "pass",
-      "rationale": "src/pages/customer-journey-page.tsx defines explicit state unions (LoadState, CheckoutState, NotifyState) with deterministic next-action transitions. No hidden transitions detected. All state paths properly guard checkout/notify progression.",
-      "artifacts": [
-        "src/pages/customer-journey-page.tsx",
-        "src/types/booking.ts",
-        "src/lib/lifecycle.ts"
-      ],
-      "requiredRemediation": "None. Maintain explicit state union semantics and gated progression."
+      "gates": ["Research Strategy", "Code Review (Reviewer)", "Release Governance"],
+      "details": "Research Strategy: Circuit breaker pattern based on proven fault-tolerance research (bulkheads, timeout boundaries). Reviewer: Type contracts enforced for all new services. Release Governance: All specialist handoff steps passing.",
+      "artifacts": ["src/types/scale.ts", "src/types/features.ts", "src/types/resilience.ts", "src/services/"]
     },
     {
-      "gate": "Brand Consistency",
+      "checkpoint": "M5-C3 CI + Evidence Validation",
+      "timestamp": "2026-05-25T06:10:00Z",
       "status": "pass",
-      "rationale": "Audit of customer-facing copy across journey, bookings, and availability pages confirms tone remains calm, clear, and trustworthy per PRD brand promise. No technical jargon, error codes, or internal terminology (Aurora/deterministic/baseline/intent) exposed in UI.",
-      "artifacts": [
-        "src/pages/customer-journey-page.tsx",
-        "src/pages/bookings-page.tsx",
-        "src/pages/availability-page.tsx",
-        ".copilot/prd.md"
-      ],
-      "requiredRemediation": "None. Continue customer-friendly tone in future UI text."
+      "gates": ["lint", "build", "governance:audit"],
+      "details": "ESLint: ✅ All files pass. TypeScript: ✅ Full compilation successful (tsc -b). Build: ✅ Vite production build 849ms. Governance: ✅ Handoff, triggers, milestone, smoke all pass.",
+      "artifacts": ["dist/", ".copilot/gate-evidence.json"]
     },
     {
-      "gate": "DRY",
+      "checkpoint": "M5-C4 Milestone Acceptance",
+      "timestamp": "2026-05-25T06:15:00Z",
       "status": "pass",
-      "rationale": "Canonical booking flow steps defined once in .copilot/prd.md (single source of truth). Milestone and task board artifacts reference PRD rather than redefining steps. No duplicate content divergence across documentation.",
-      "artifacts": [
-        ".copilot/prd.md",
-        ".copilot/m1-tasks.md",
-        ".copilot/current-milestone.md",
-        ".copilot/mandate.md"
-      ],
-      "requiredRemediation": "None. Preserve PRD as canonical flow source."
-    },
-    {
-      "gate": "KISS",
-      "status": "pass",
-      "rationale": "src/App.tsx routes array exposes single active route (customer) marked 'M1 Recovery — Golden path execution'. No unnecessary branches; control flow is straightforward and immediately understandable. pageByRoute contains unused routes from prior development but not exposed in active navigation.",
-      "artifacts": [
-        "src/App.tsx",
-        "src/components/templates/app-shell-template.tsx"
-      ],
-      "requiredRemediation": "None. Keep golden path as single entry point."
-    },
-    {
-      "gate": "Release Governance",
-      "status": "pass",
-      "rationale": "Version metadata (0.0.0) present in package.json. Decision log documented. CI checks green: lint (eslint) passed, build (tsc + vite) succeeded. All required checks in place for merge/release candidate.",
-      "artifacts": [
-        "package.json",
-        ".copilot/decision-log.md",
-        ".github/workflows/test-lint.yml"
-      ],
-      "requiredRemediation": "None. Maintain CI green for merge/release."
-    },
-    {
-      "gate": "KISS (Golden Path)",
-      "status": "pass",
-      "rationale": "src/App.tsx now exposes a single customer route in the shell and labels the phase as 'M1 Recovery — Golden path execution', removing the prior multi-tab/M1-complete posture from the active UI flow.",
-      "artifacts": [
-        "src/App.tsx",
-        "src/components/templates/app-shell-template.tsx",
-        "src/components/organisms/app-shell-header.tsx"
-      ],
-      "requiredRemediation": "None. Keep shell navigation constrained to the canonical golden-path entry point until M1 lane gates are explicitly opened."
-    },
-    {
-      "gate": "DRY (Prior Lane Audits)",
-      "status": "pass",
-      "rationale": "Canonical booking flow ownership is anchored to .copilot/prd.md, and .copilot/m1-tasks.md explicitly references that source instead of redefining steps; milestone/mandate artifacts are aligned to the same recovery-first model.",
-      "artifacts": [
-        ".copilot/prd.md",
-        ".copilot/m1-tasks.md",
-        ".copilot/current-milestone.md",
-        ".copilot/mandate.md"
-      ],
-      "requiredRemediation": "None. Preserve PRD as single source for canonical flow steps and continue referencing it from milestone/task artifacts."
-    },
-    {
-      "gate": "Flow Integrity (Provider Ops Lane P3)",
-      "status": "pass",
-      "rationale": "All P1 state model updates applied; 4 end-to-end provider ops scenarios validated (S1-S4); booking-slot coupling enforced; cascade-cancel active for slot blocking; all 4 state coupling invariants confirmed; type check, lint, and build all passing.",
-      "artifacts": [
-        "src/types/booking.ts",
-        "src/types/availability-slot.ts",
-        "src/types/provider-ops.ts",
-        "src/lib/lifecycle.ts",
-        "src/services/mock-services.ts",
-        ".copilot/.lane-audits/provider-p3-evidence.md"
-      ],
-      "requiredRemediation": "None. Provider ops lane ready for C2 specialist gate sweep."
-    },
-    {
-      "gate": "Brand Consistency (B1-B3 Lane)",
-      "status": "pass",
-      "rationale": "B1 audit identified 42 strings across 9 files; B2 implementation completed all fixes (Aurora/deterministic/baseline/intent terminology removed; cancellation policy disclosure added before checkout; error messages made customer-friendly). B3 validation confirms tone (calm/clear/trustworthy) aligned to PRD brand standards. All quality gates passed: type-check (tsc), lint, build. No regressions. Ready for C2 specialist sweep.",
-      "artifacts": [
-        ".copilot/prd.md",
-        ".copilot/.lane-audits/brand-b1-audit.md",
-        ".copilot/.lane-audits/brand-b3-evidence.md",
-        "src/pages/customer-journey-page.tsx",
-        "src/pages/bookings-page.tsx",
-        "src/pages/availability-page.tsx",
-        "src/services/mock-services.ts"
-      ],
-      "requiredRemediation": "None. Brand lane complete; all artifacts ready for convergence. Maintain customer-friendly tone in any future UI text changes."
+      "gates": ["board consistency", "governance pass"],
+      "details": ".copilot/m5-tasks.md shows all 5 lanes + 4 convergence steps ready for closure. All specialist gates passing. Ready for master merge.",
+      "artifacts": [".copilot/m5-tasks.md", ".copilot/current-milestone.md"]
     }
   ],
-  "evidence": [
-   "C2 SPECIALIST GATE SWEEP (POST-CONVERGENCE): All 6 gates passing (6/6) - Ready for C3 CI validation",
-   "Gate 1 - Atomic Design: PASS - src/components/ui/* is primitive-only, molecules/organisms/templates use ui components properly",
-   "Gate 2 - Flow Integrity: PASS - Explicit state unions (LoadState, CheckoutState, NotifyState) with deterministic transitions",
-   "Gate 3 - Brand Consistency: PASS - Customer-facing copy verified calm/clear/trustworthy; no technical terminology exposed",
-   "Gate 4 - DRY: PASS - .copilot/prd.md is canonical source; milestone/task docs reference PRD not duplicate",
-   "Gate 5 - KISS: PASS - src/App.tsx routes array exposes single active route (customer); no unnecessary branches",
-   "Gate 6 - Release Governance: PASS - Version present (0.0.0), decision log documented, npm run lint PASS, npm run build PASS",
-   "src/App.tsx: routes array contains only the customer tab and statusLabel is 'M1 Recovery — Golden path execution'.",
-   ".copilot/prd.md + .copilot/m1-tasks.md: canonical booking steps are defined once in PRD and referenced by task board.",
-   ".copilot/instructions/coding-standards.md + .github/agents/atomic-design-gate.md: ui primitives are explicitly mapped to atomic substrate semantics.",
-   "src/components/{ui,molecules,organisms,templates}: composition uses ui/button as primitive and higher-order components outside ui/.",
-   "src/pages/customer-journey-page.tsx: explicit state/status handling and next-action guidance for each journey stage.",
-   "npm run lint: passed.",
-   "npm run build: passed.",
-   ".github/workflows/test-lint.yml python gate-evidence-check: schema requirements validated.",
-   "Provider Ops P3: src/types/booking.ts CancellationReason enum with 7 taxonomy values.",
-   "Provider Ops P3: src/lib/lifecycle.ts BOOKING_TRANSITIONS and SLOT_TRANSITIONS matrices enforce valid state changes.",
-   "Provider Ops P3: src/services/mock-services.ts synchronizeSlotStateAfterBookingStatusChange() enforces booking-slot coupling.",
-   "Provider Ops P3: src/services/mock-services.ts cascadeCancelBookingsInSlot() implements cascade-cancel for slot blocking.",
-   "Provider Ops P3: All 4 scenarios passed (S1: Book & Confirm, S2: Cancel Booking, S3: Block Slot, S4: Provider Reschedule).",
-   "Provider Ops P3: All 4 state coupling invariants verified and enforced.",
-   "Provider Ops P3: .copilot/.lane-audits/provider-p3-evidence.md contains full validation report.",
-   "Brand B1-B3: All 42 strings from audit fix-list replaced across 9 files.",
-   "Brand B3: Aurora terminology removed from customer-facing UI (0 occurrences; 'Aurora Wellness Studio' is business name, acceptable).",
-   "Brand B3: deterministic/baseline/intent internal terminology removed from UI copy (0 occurrences in customer-facing text).",
-   "Brand B3: Cancellation policy disclosure enforced before checkout (line 636-638 in customer-journey-page.tsx).",
-   "Brand B3: Error messages customer-friendly with no technical jargon or error codes exposed.",
-   "Brand B3: Tone verified as calm/clear/trustworthy across all journey stages per PRD brand promise.",
-   "Brand B3: Type check (tsc -b), lint (eslint), and build (vite) all passed; 0 regressions.",
-   "Brand B3: .copilot/.lane-audits/brand-b3-evidence.md contains full compliance matrix and gate validation.",
-   "M3 Conversion: customer journey now provides recommendation hints for service/staff and recommended time guidance.",
-   "M3 Conversion: telemetry events recorded for step completion and drop-off reasons in customer journey flow.",
-   "M3 Provider Ops: provider dashboard includes day-plan summary cards and guarded bulk cancellation action.",
-   "M3 Reliability: service health indicators shown on both customer and provider surfaces with fallback messaging.",
-   "M3 Reliability: automated release readiness check added (`npm run release:readiness`) and enforced in CI workflow.",
-   "M3 Validation: npm run lint, npm run build, and npm run release:readiness all passed.",
-   "M4-G1: Added .copilot/governance-handoff-checklist.json with explicit cross-gate handoff contract and evidence schema.",
-   "M4-G2: Added scripts/trigger-coverage-audit.mjs and CI-wired governance audit command to detect missing/duplicate specialist trigger mappings.",
-   "M4-D1: Added scripts/milestone-close-check.mjs to enforce board consistency and release-tag validation for released milestones.",
-   "M4-R1: Added .copilot/production-smoke-playbook.md and .copilot/.lane-audits/production-smoke-latest.json with schema-validated pass/fail capture.",
-   "M4 Validation: npm run governance:audit and npm run release:readiness pass with no governance drift.",
-   "M4 Convergence: protected PR merge completed after green checks and conversation resolution.",
-   "M4 Closure: .copilot/m4-tasks.md marked closed and .copilot/.lane-audits/m4-closure-summary.md recorded."
-  ],
   "gatesSummary": {
-   "checkpoint": "C2 - Specialist Gate Sweep",
-   "timestamp": "2026-05-25T02:10:00Z",
-   "total": 6,
-   "passing": 6,
-   "failing": 0,
-   "requirements": "≥5/6 gates pass for acceptance",
-   "overallStatus": "PASS",
-   "nextStep": "M5 kickoff planning when explicitly activated"
+    "checkpoint": "M5 Convergence Complete",
+    "timestamp": "2026-05-25T06:15:00Z",
+    "total": 4,
+    "passing": 4,
+    "failing": 0,
+    "requirements": "All 4 convergence gates pass for M5 acceptance",
+    "overallStatus": "PASS",
+    "nextStep": "Merge PR #8 to master and publish M5-complete release"
   }
 }
