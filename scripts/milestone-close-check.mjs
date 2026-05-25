@@ -38,13 +38,20 @@ const requiredReleasedTags = [
   { milestone: 'M3', tag: 'M3-complete', marker: '**M3 (Optimization and readiness):** ✅ Complete and released' }
 ]
 
-const existingTags = new Set(
-  execSync('git tag --list', { cwd: root, stdio: ['ignore', 'pipe', 'pipe'] })
-    .toString('utf8')
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-)
+const localTags = execSync('git tag --list', { cwd: root, stdio: ['ignore', 'pipe', 'pipe'] })
+  .toString('utf8')
+  .split('\n')
+  .map((line) => line.trim())
+  .filter(Boolean)
+
+const remoteTags = execSync('git ls-remote --tags origin', { cwd: root, stdio: ['ignore', 'pipe', 'pipe'] })
+  .toString('utf8')
+  .split('\n')
+  .map((line) => line.trim().split('\t')[1] ?? '')
+  .filter((ref) => ref.startsWith('refs/tags/'))
+  .map((ref) => ref.replace('refs/tags/', '').replace(/\^\{\}$/, ''))
+
+const existingTags = new Set([...localTags, ...remoteTags])
 
 for (const entry of requiredReleasedTags) {
   if (milestoneDoc.includes(entry.marker) && !existingTags.has(entry.tag)) {
