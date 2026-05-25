@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 const root = process.cwd()
@@ -6,16 +6,28 @@ const triggersPath = join(root, '.copilot', 'instructions', 'auto-triggers.md')
 const hierarchyPath = join(root, '.copilot', 'instructions', 'hierarchy.md')
 const reportPath = join(root, '.copilot', '.lane-audits', 'trigger-coverage-audit.json')
 
+if (!existsSync(triggersPath)) {
+  throw new Error(`Missing ${triggersPath}`)
+}
+if (!existsSync(hierarchyPath)) {
+  throw new Error(`Missing ${hierarchyPath}`)
+}
+
 const triggerDoc = readFileSync(triggersPath, 'utf8')
 const hierarchyDoc = readFileSync(hierarchyPath, 'utf8')
 
-const gateFiles = readdirSync(join(root, '.github', 'agents'))
+const agentsDir = join(root, '.github', 'agents')
+if (!existsSync(agentsDir)) {
+  throw new Error('Missing .github/agents directory')
+}
+
+const gateFiles = readdirSync(agentsDir)
   .filter((name) => name.endsWith('-gate.md'))
   .map((name) => `.github/agents/${name}`)
   .sort()
 
 const extractGatePaths = (content) => {
-  const matches = content.match(/\.github\/agents\/[a-z0-9-]+-gate\.md/g) ?? []
+  const matches = content.match(/\.github\/agents\/[\w.-]+-gate\.md/g) ?? []
   return matches.map((path) => path.trim())
 }
 

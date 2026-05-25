@@ -18,6 +18,9 @@ if (!existsSync(milestonePath)) {
 }
 
 const milestoneDoc = readFileSync(milestonePath, 'utf8')
+const activeMilestoneMatch = milestoneDoc.match(/\*\*(M\d+)\s*\([^)]*\):\*\*\s*🟡/i)
+const activeMilestone = activeMilestoneMatch ? activeMilestoneMatch[1].toUpperCase() : null
+
 for (const [milestone, path] of Object.entries(boards)) {
   if (!existsSync(path)) {
     errors.push(`Missing board file for ${milestone}: ${path}`)
@@ -25,11 +28,16 @@ for (const [milestone, path] of Object.entries(boards)) {
   }
 
   const board = readFileSync(path, 'utf8')
-  if (milestone !== 'M4' && !board.includes('(Closed)')) {
-    errors.push(`${milestone} board should be marked as closed`)
+  const milestoneLineMatch = milestoneDoc.match(new RegExp(`\\*\\*${milestone}\\s*\\([^)]*\\):\\*\\*\\s*(.*)`))
+  const milestoneLine = milestoneLineMatch?.[1] ?? ''
+  const isReleasedOrComplete = milestoneLine.includes('✅ Complete')
+
+  if (activeMilestone === milestone && !board.includes('(Kickoff)')) {
+    errors.push(`${milestone} board should be marked as kickoff while active`)
   }
-  if (milestone === 'M4' && !board.includes('(Kickoff)')) {
-    errors.push('M4 board should be marked as kickoff while active')
+
+  if (activeMilestone !== milestone && isReleasedOrComplete && !board.includes('(Closed)')) {
+    errors.push(`${milestone} board should be marked as closed when not active`)
   }
 }
 
@@ -63,6 +71,7 @@ const report = {
   generatedAt: new Date().toISOString(),
   status: errors.length === 0 ? 'pass' : 'fail',
   checkedBoards: Object.keys(boards),
+  activeMilestone,
   requiredReleasedTags,
   errors
 }

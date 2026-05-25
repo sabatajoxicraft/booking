@@ -32,7 +32,8 @@ if (!['pass', 'fail'].includes(artifact.status)) {
   errors.push("Smoke artifact status must be 'pass' or 'fail'")
 }
 
-for (const check of artifact.checks ?? []) {
+const checks = Array.isArray(artifact.checks) ? artifact.checks : []
+for (const check of checks) {
   for (const field of requiredCheckFields) {
     if (!(field in check)) {
       errors.push(`Smoke check ${check.id ?? '<missing-id>'} missing field: ${field}`)

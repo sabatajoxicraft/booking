@@ -10,7 +10,12 @@ if (!existsSync(checklistPath)) {
 }
 
 const checklist = JSON.parse(readFileSync(checklistPath, 'utf8'))
-const gateFiles = readdirSync(join(root, '.github', 'agents'))
+const agentsDir = join(root, '.github', 'agents')
+if (!existsSync(agentsDir)) {
+  throw new Error('Missing .github/agents directory')
+}
+
+const gateFiles = readdirSync(agentsDir)
   .filter((name) => name.endsWith('-gate.md'))
   .map((name) => `.github/agents/${name}`)
 const requiredTopLevel = ['schemaVersion', 'milestone', 'updatedAt', 'status', 'handoffs']
@@ -45,7 +50,8 @@ if (!Array.isArray(checklist.handoffs) || checklist.handoffs.length === 0) {
 }
 
 const referencedGates = new Set()
-for (const handoff of checklist.handoffs ?? []) {
+const handoffs = Array.isArray(checklist.handoffs) ? checklist.handoffs : []
+for (const handoff of handoffs) {
   for (const field of requiredHandoff) {
     if (!(field in handoff)) {
       errors.push(`handoff ${handoff.id ?? '<missing-id>'} missing field: ${field}`)
@@ -64,10 +70,15 @@ for (const handoff of checklist.handoffs ?? []) {
     errors.push(`handoff ${handoff.id ?? '<missing-id>'} must include at least one gate`)
   }
 
-  for (const gate of handoff.gates ?? []) {
-    referencedGates.add(gate)
-    if (!gateFiles.includes(gate)) {
-      errors.push(`handoff ${handoff.id ?? '<missing-id>'} references unknown gate: ${gate}`)
+  const gates = Array.isArray(handoff.gates) ? handoff.gates : []
+  for (const gate of gates) {
+    if (typeof gate === 'string') {
+      referencedGates.add(gate)
+      if (!gateFiles.includes(gate)) {
+        errors.push(`handoff ${handoff.id ?? '<missing-id>'} references unknown gate: ${gate}`)
+      }
+    } else {
+      errors.push(`handoff ${handoff.id ?? '<missing-id>'} has non-string gate entry`)
     }
   }
 }
