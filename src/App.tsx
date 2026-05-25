@@ -1,11 +1,6 @@
-import { type ReactNode, useMemo, useState } from 'react'
+import { Suspense, lazy, type ReactNode, useMemo, useState } from 'react'
 
 import { AppShellTemplate } from '@/components/templates/app-shell-template'
-import { AvailabilityPage } from '@/pages/availability-page'
-import { BookingsPage } from '@/pages/bookings-page'
-import { CatalogPage } from '@/pages/catalog-page'
-import { CustomerJourneyPage } from '@/pages/customer-journey-page'
-import { ProviderOpsPage } from '@/pages/provider-ops-page'
 import { createMockServiceRegistry } from '@/services/mock-services'
 import type { AvailabilitySlotId } from '@/types/availability-slot'
 import type { BookingIntent } from '@/types/booking'
@@ -15,6 +10,31 @@ import type { ServiceId } from '@/types/service'
 import type { StaffId } from '@/types/staff'
 
 type RouteKey = 'catalog' | 'availability' | 'bookings' | 'provider' | 'customer'
+
+const CatalogPage = lazy(async () => {
+  const module = await import('@/pages/catalog-page')
+  return { default: module.CatalogPage }
+})
+
+const AvailabilityPage = lazy(async () => {
+  const module = await import('@/pages/availability-page')
+  return { default: module.AvailabilityPage }
+})
+
+const BookingsPage = lazy(async () => {
+  const module = await import('@/pages/bookings-page')
+  return { default: module.BookingsPage }
+})
+
+const ProviderOpsPage = lazy(async () => {
+  const module = await import('@/pages/provider-ops-page')
+  return { default: module.ProviderOpsPage }
+})
+
+const CustomerJourneyPage = lazy(async () => {
+  const module = await import('@/pages/customer-journey-page')
+  return { default: module.CustomerJourneyPage }
+})
 
 function App() {
   const [activeRoute, setActiveRoute] = useState<RouteKey>('customer')
@@ -29,6 +49,10 @@ function App() {
   const customerId: CustomerId = 'cus_demo'
 
   const routes: Array<{ key: RouteKey; label: string }> = [
+    { key: 'catalog', label: 'Catalog' },
+    { key: 'availability', label: 'Availability' },
+    { key: 'bookings', label: 'Bookings' },
+    { key: 'provider', label: 'Admin' },
     { key: 'customer', label: 'Customer' },
   ]
 
@@ -93,6 +117,8 @@ function App() {
         catalogService={services.catalog}
         availabilityService={services.availability}
         bookingService={services.bookings}
+        paymentService={services.payments}
+        notificationService={services.notifications}
         providerService={services.providerOps}
         selectedBusinessId={selectedBusinessId}
         selectedServiceId={selectedServiceId}
@@ -126,12 +152,14 @@ function App() {
       <AppShellTemplate
         title="Booking System"
         subtitle="Complete your appointment in minutes"
-        statusLabel="Booking System"
+        statusLabel="M2 planning"
         routes={routes}
         activeRoute={activeRoute}
         onRouteSelect={setActiveRoute}
       >
-        {pageByRoute[activeRoute]}
+        <Suspense fallback={<p className="text-sm text-muted-foreground">Loading route...</p>}>
+          {pageByRoute[activeRoute]}
+        </Suspense>
       </AppShellTemplate>
     </div>
   )

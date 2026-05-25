@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { StatusChip } from '@/components/atoms/status-chip'
 import { Button } from '@/components/ui/button'
+import { filterItemsByQuery, isServiceSearchEmpty } from '@/lib/service-search'
 import type { ProviderOperationsService } from '@/services/interfaces'
 import type { ApiErrorContract } from '@/types/api'
 import type { AvailabilitySlotState } from '@/types/availability-slot'
@@ -50,6 +51,7 @@ export function ProviderOpsPage({ providerService, businessId }: ProviderOpsPage
   const [nextBookingStatus, setNextBookingStatus] = useState<BookingStatus>('confirmed')
   const [selectedSlotId, setSelectedSlotId] = useState<string>('')
   const [nextSlotState, setNextSlotState] = useState<AvailabilitySlotState>('open')
+  const [providerSearchQuery, setProviderSearchQuery] = useState('')
 
   useEffect(() => {
     let isMounted = true
@@ -91,6 +93,58 @@ export function ProviderOpsPage({ providerService, businessId }: ProviderOpsPage
 
   const bookingOptions = viewState.status === 'success' ? viewState.view.queueGroups.flatMap((group) => group.bookings) : []
   const slotOptions = viewState.status === 'success' ? viewState.view.slotSnapshots : []
+  const hasProviderSearch = !isServiceSearchEmpty(providerSearchQuery)
+
+  const filteredQueueGroups = useMemo(() => {
+    if (viewState.status !== 'success') {
+      return []
+    }
+
+    return viewState.view.queueGroups
+      .map((group) => ({
+        ...group,
+        bookings: filterItemsByQuery(group.bookings, providerSearchQuery, (booking) =>
+          [
+            booking.bookingId,
+            booking.customerId,
+            booking.serviceId,
+            booking.staffId,
+            booking.slotId,
+            booking.startIso,
+            booking.endIso,
+            booking.status,
+          ].join(' '),
+        ),
+      }))
+      .filter((group) => group.bookings.length > 0)
+  }, [providerSearchQuery, viewState])
+
+  const filteredCalendarDays = useMemo(() => {
+    if (viewState.status !== 'success') {
+      return []
+    }
+
+    return viewState.view.calendarDays
+      .map((day) => ({
+        ...day,
+        bookings: filterItemsByQuery(day.bookings, providerSearchQuery, (booking) =>
+          [booking.bookingId, booking.customerId, booking.serviceId, booking.startIso, booking.endIso, booking.status].join(
+            ' ',
+          ),
+        ),
+      }))
+      .filter((day) => day.bookings.length > 0)
+  }, [providerSearchQuery, viewState])
+
+  const filteredSlotSnapshots = useMemo(() => {
+    if (viewState.status !== 'success') {
+      return []
+    }
+
+    return filterItemsByQuery(viewState.view.slotSnapshots, providerSearchQuery, (slot) =>
+      [slot.slotId, slot.startIso, slot.endIso, slot.state, slot.isBookable ? 'bookable' : 'unavailable'].join(' '),
+    )
+  }, [providerSearchQuery, viewState])
 
   const effectiveSelectedBookingId =
     selectedBookingId && bookingOptions.some((booking) => booking.bookingId === selectedBookingId)
@@ -153,10 +207,27 @@ export function ProviderOpsPage({ providerService, businessId }: ProviderOpsPage
       <section className="space-y-2 rounded border p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-medium">Queue and calendar view</h3>
-          <Button type="button" size="sm" variant="outline" onClick={() => void reloadView()}>
-            Refresh
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {hasProviderSearch && (
+              <Button type="button" size="sm" variant="outline" onClick={() => setProviderSearchQuery('')}>
+                Clear search
+              </Button>
+            )}
+            <Button type="button" size="sm" variant="outline" onClick={() => void reloadView()}>
+              Refresh
+            </Button>
+          </div>
         </div>
+        <label className="flex max-w-sm flex-col gap-1 text-sm">
+          Search bookings and slots
+          <input
+            type="search"
+            value={providerSearchQuery}
+            onChange={(event) => setProviderSearchQuery(event.target.value)}
+            placeholder="Search by booking, customer, service, slot, or status"
+            className="rounded border border-border bg-background px-2 py-1 text-sm"
+          />
+        </label>
         {viewState.status === 'loading' && (
           <p className="text-sm text-muted-foreground">Loading dashboard...</p>
         )}
@@ -168,14 +239,24 @@ export function ProviderOpsPage({ providerService, businessId }: ProviderOpsPage
         {viewState.status === 'success' && (
           <div className="space-y-3">
             <p className="text-xs text-muted-foreground">Generated: {viewState.view.generatedAtIso}</p>
+            {hasProviderSearch && (
+              <p className="text-xs text-muted-foreground">
+                Showing {filteredQueueGroups.reduce((total, group) => total + group.bookings.length, 0)} queue items and{' '}
+                {filteredSlotSnapshots.length} slots across the current dashboard ordering.
+              </p>
+            )}
             <div className="space-y-2">
               <h4 className="text-sm font-medium">Queue groups</h4>
-              {viewState.view.queueGroups.map((group) => (
-                <div key={group.status} className="space-y-1 rounded border p-2">
-                  <p className="text-xs font-medium">{group.label}</p>
-                  {group.bookings.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">No bookings in this status.</p>
-                  ) : (
+              {filteredQueueGroups.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  {hasProviderSearch
+                    ? 'No bookings match this search. Try a booking ID, customer ID, service ID, slot ID, or status.'
+                    : 'No bookings in the dashboard yet.'}
+                </p>
+              ) : (
+                filteredQueueGroups.map((group) => (
+                  <div key={group.status} className="space-y-1 rounded border p-2">
+                    <p className="text-xs font-medium">{group.label}</p>
                     <ul className="space-y-1">
                       {group.bookings.map((booking) => (
                         <li key={booking.bookingId} className="flex flex-wrap items-center justify-between gap-2 text-xs">
@@ -186,25 +267,55 @@ export function ProviderOpsPage({ providerService, businessId }: ProviderOpsPage
                         </li>
                       ))}
                     </ul>
-                  )}
-                </div>
-              ))}
+                  </div>
+                ))
+              )}
             </div>
             <div className="space-y-2">
               <h4 className="text-sm font-medium">Calendar groups</h4>
-              {viewState.view.calendarDays.map((day) => (
-                <div key={day.dateIso} className="rounded border p-2">
-                  <p className="text-xs font-medium">{day.dateIso}</p>
-                  <ul className="mt-1 space-y-1">
-                    {day.bookings.map((booking) => (
-                      <li key={booking.bookingId} className="text-xs text-muted-foreground">
-                        {booking.bookingId} · {new Date(booking.startIso).toLocaleTimeString()}-
-                        {new Date(booking.endIso).toLocaleTimeString()} · {BOOKING_STATUS_LABELS[booking.status]}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
+              {filteredCalendarDays.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  {hasProviderSearch
+                    ? 'No calendar days match this search.'
+                    : 'No calendar data available for this business.'}
+                </p>
+              ) : (
+                filteredCalendarDays.map((day) => (
+                  <div key={day.dateIso} className="rounded border p-2">
+                    <p className="text-xs font-medium">{day.dateIso}</p>
+                    <ul className="mt-1 space-y-1">
+                      {day.bookings.map((booking) => (
+                        <li key={booking.bookingId} className="text-xs text-muted-foreground">
+                          {booking.bookingId} · {new Date(booking.startIso).toLocaleTimeString()}-
+                          {new Date(booking.endIso).toLocaleTimeString()} · {BOOKING_STATUS_LABELS[booking.status]}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium">Slot snapshots</h4>
+              {filteredSlotSnapshots.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  {hasProviderSearch
+                    ? 'No slots match this search.'
+                    : 'No slot snapshots available for this business.'}
+                </p>
+              ) : (
+                <ul className="space-y-1">
+                  {filteredSlotSnapshots.map((slot) => (
+                    <li key={slot.slotId} className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                      <span>
+                        {slot.slotId} · {new Date(slot.startIso).toLocaleTimeString()}-
+                        {new Date(slot.endIso).toLocaleTimeString()} · {slot.state}
+                      </span>
+                      <StatusChip label={slot.isBookable ? 'Bookable' : 'Locked'} />
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
         )}

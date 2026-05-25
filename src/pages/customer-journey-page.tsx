@@ -2,10 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { StatusChip } from '@/components/atoms/status-chip'
 import { Button } from '@/components/ui/button'
+import { filterItemsByQuery, isServiceSearchEmpty } from '@/lib/service-search'
 import type {
   AvailabilityQueryService,
   BookingService,
   CatalogDiscoveryService,
+  NotificationService,
+  PaymentService,
   ProviderOperationsService,
 } from '@/services/interfaces'
 import type { ApiErrorContract } from '@/types/api'
@@ -13,6 +16,8 @@ import type { AvailabilitySlotId } from '@/types/availability-slot'
 import type { BookingIntent } from '@/types/booking'
 import type { BusinessId } from '@/types/business'
 import type { CustomerId } from '@/types/customer'
+import type { BookingNotification } from '@/types/notification'
+import type { PaymentMethod, PaymentOutcome } from '@/types/payment'
 import type { ServiceId } from '@/types/service'
 import type { StaffId } from '@/types/staff'
 
@@ -30,25 +35,52 @@ type CheckoutState =
   | { status: 'error'; error: ApiErrorContract }
   | { status: 'success'; mode: CheckoutMode; intent: BookingIntent }
 
-type NotifyState =
+type PaymentState =
+  | { status: 'idle' }
+  | { status: 'processing'; method: PaymentMethod }
+  | { status: 'success'; outcome: PaymentOutcome }
+  | { status: 'retry'; outcome: PaymentOutcome }
+  | { status: 'failure'; outcome: PaymentOutcome }
+
+type NotificationState =
   | { status: 'idle'; message: string }
   | { status: 'loading' }
   | { status: 'error'; error: ApiErrorContract }
-  | {
-      status: 'success'
-      data: {
-        headline: string
-        detail: string
-        nextAction: string
-      }
-    }
+  | { status: 'success'; data: BookingNotification }
 
 type ProgressStatus = 'pending' | 'active' | 'complete' | 'error'
+
+type CustomerReview = {
+  serviceId: ServiceId
+  rating: number
+  quote: string
+  reviewerLabel: string
+  dateLabel: string
+}
+
+const CUSTOMER_REVIEWS: CustomerReview[] = [
+  {
+    serviceId: 'svc_consult',
+    rating: 5,
+    quote: 'Clear steps, calm guidance, and no surprises during checkout.',
+    reviewerLabel: 'Verified customer',
+    dateLabel: 'Jan 2026',
+  },
+  {
+    serviceId: 'svc_consult',
+    rating: 5,
+    quote: 'Fast to book and easy to understand from start to finish.',
+    reviewerLabel: 'Verified customer',
+    dateLabel: 'Jan 2026',
+  },
+]
 
 interface CustomerJourneyPageProps {
   catalogService: CatalogDiscoveryService
   availabilityService: AvailabilityQueryService
   bookingService: BookingService
+  paymentService: PaymentService
+  notificationService: NotificationService
   providerService: ProviderOperationsService
   selectedBusinessId: BusinessId
   selectedServiceId: ServiceId | null
@@ -68,6 +100,8 @@ export function CustomerJourneyPage({
   catalogService,
   availabilityService,
   bookingService,
+  paymentService,
+  notificationService,
   providerService,
   selectedBusinessId,
   selectedServiceId,
@@ -86,7 +120,14 @@ export function CustomerJourneyPage({
     LoadState<{
       businesses: Array<{ id: BusinessId; name: string }>
       businessName: string
-      services: Array<{ id: ServiceId; name: string; durationMinutes: number; priceLabel: string }>
+      services: Array<{
+        id: ServiceId
+        name: string
+        durationMinutes: number
+        priceLabel: string
+        priceCents: number
+        currency: 'ZAR'
+      }>
       staff: Array<{ id: StaffId; displayName: string; serviceIds: ServiceId[] }>
     }>
   >({ status: 'loading' })
@@ -99,10 +140,13 @@ export function CustomerJourneyPage({
   })
 
   const [checkoutState, setCheckoutState] = useState<CheckoutState>({ status: 'idle' })
-  const [notifyState, setNotifyState] = useState<NotifyState>({
+  const [paymentState, setPaymentState] = useState<PaymentState>({ status: 'idle' })
+  const [notifyState, setNotifyState] = useState<NotificationState>({
     status: 'idle',
     message: 'Your booking details are confirmed. Review our cancellation policy below before proceeding.',
   })
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card')
+  const [serviceQuery, setServiceQuery] = useState('')
 
   useEffect(() => {
     const loadDiscover = async () => {
@@ -139,6 +183,8 @@ export function CustomerJourneyPage({
             name: service.name,
             durationMinutes: service.durationMinutes,
             priceLabel: `${service.currency} ${(service.priceCents / 100).toFixed(2)}`,
+            priceCents: service.priceCents,
+            currency: service.currency,
           })),
           staff: staffResponse.data.map((staffMember) => ({
             id: staffMember.id,
@@ -235,6 +281,45 @@ export function CustomerJourneyPage({
     return selectUiState.data.find((slot) => slot.id === selectedSlotId) ?? null
   }, [selectUiState, selectedSlotId])
 
+  const reviewState = useMemo(() => {
+    if (discoverState.status !== 'success') {
+      return { status: 'idle' as const, message: 'Load the service list to see verified customer reviews.' }
+    }
+
+    if (!selectedServiceId) {
+      return { status: 'idle' as const, message: 'Choose a service to read customer feedback.' }
+    }
+
+    const reviews = CUSTOMER_REVIEWS.filter((review) => review.serviceId === selectedServiceId)
+    if (reviews.length === 0) {
+      return { status: 'empty' as const, message: 'No customer reviews are available for this service yet.' }
+    }
+
+    return { status: 'success' as const, reviews }
+  }, [discoverState.status, selectedServiceId])
+
+  const filteredServices = useMemo(() => {
+    if (discoverState.status !== 'success') {
+      return []
+    }
+
+    return filterItemsByQuery(discoverState.data.services, serviceQuery, (service) =>
+      [
+        service.name,
+        service.id,
+        `${service.durationMinutes} minutes`,
+        `${service.durationMinutes}m`,
+        service.priceLabel,
+      ].join(' '),
+    )
+  }, [discoverState, serviceQuery])
+
+  const hasServiceSearch = !isServiceSearchEmpty(serviceQuery)
+  const selectedServiceHiddenBySearch =
+    discoverState.status === 'success' &&
+    selectedServiceId !== null &&
+    !filteredServices.some((service) => service.id === selectedServiceId)
+
   const confirmState: { status: 'idle' | 'error' | 'success'; message: string } = useMemo(() => {
     if (discoverState.status !== 'success') {
       return { status: 'idle', message: 'Choose a service and staff member to continue.' }
@@ -279,6 +364,12 @@ export function CustomerJourneyPage({
     if (checkoutState.status === 'idle') {
       return 'Next action: run Checkout with Pay now (golden path); use Place hold only as fallback.'
     }
+    if (paymentState.status === 'retry') {
+      return 'Next action: retry payment with card to complete the booking.'
+    }
+    if (paymentState.status === 'failure') {
+      return 'Next action: try another payment method or use the hold fallback.'
+    }
     if (notifyState.status === 'loading') {
       return 'Next action: wait for confirmation to finalize your booking.'
     }
@@ -290,72 +381,32 @@ export function CustomerJourneyPage({
     }
 
     return 'Next action: continue through the golden path steps in order.'
-  }, [checkoutState, discoverState.status, notifyState, selectUiState.status, selectedSlot])
+  }, [checkoutState, discoverState.status, notifyState, paymentState.status, selectUiState.status, selectedSlot])
 
-  const runNotifyOutcome = async (mode: CheckoutMode, intent: BookingIntent) => {
+  const runNotifyOutcome = async (mode: CheckoutMode, intent: BookingIntent, paymentOutcome?: PaymentOutcome) => {
     setNotifyState({ status: 'loading' })
 
-    const bookingsResponse = await bookingService.listBookings(customerId)
-    if (bookingsResponse.status === 'failure') {
-      setNotifyState({ status: 'error', error: bookingsResponse.error })
-      return
-    }
+    const eventKind =
+      mode === 'hold'
+        ? 'booking_held'
+        : paymentOutcome?.status === 'success'
+          ? 'booking_confirmed'
+          : paymentOutcome?.status === 'retry'
+            ? 'payment_retry'
+            : 'payment_failed'
 
-    const providerResponse = await providerService.getBookingsView(selectedBusinessId)
-    if (providerResponse.status === 'failure') {
-      setNotifyState({ status: 'error', error: providerResponse.error })
-      return
-    }
-
-    const matchingBooking = bookingsResponse.data.find((booking) => booking.slotId === intent.bookingDraft.slotId)
-    const slotSnapshot = providerResponse.data.slotSnapshots.find(
-      (snapshot) => snapshot.slotId === intent.bookingDraft.slotId,
-    )
-
-    if (mode === 'pay') {
-      if (matchingBooking?.status === 'confirmed') {
-        setNotifyState({
-          status: 'success',
-          data: {
-            headline: 'Booking confirmed',
-            detail: `Booking ${matchingBooking.id} is confirmed for your selected time.`,
-            nextAction: 'Next action: Check your inbox for confirmation details.',
-          },
-        })
-        return
-      }
-
-      setNotifyState({
-        status: 'success',
-        data: {
-          headline: 'Payment processing',
-          detail: `Your booking is being processed and awaiting final confirmation.`,
-          nextAction: 'Next action: Watch for confirmation shortly.',
-        },
-      })
-      return
-    }
-
-    if (slotSnapshot?.state === 'held') {
-      setNotifyState({
-        status: 'success',
-        data: {
-          headline: 'Slot reserved',
-          detail: `Slot ${slotSnapshot.slotId} is now held while you finish checkout details.`,
-          nextAction: 'Next action: Return soon to complete payment before the hold expires.',
-        },
-      })
-      return
-    }
-
-    setNotifyState({
-      status: 'success',
-      data: {
-        headline: 'Reservation submitted',
-        detail: `Your reservation was submitted and is being processed.`,
-        nextAction: 'Next action: Refresh Select if you want to pick another time.',
-      },
+    const response = await notificationService.publishBookingLifecycleEvent({
+      kind: eventKind,
+      intentId: intent.intentId,
+      paymentStatus: paymentOutcome?.status,
     })
+
+    if (response.status === 'failure') {
+      setNotifyState({ status: 'error', error: response.error })
+      return
+    }
+
+    setNotifyState({ status: 'success', data: response.data })
   }
 
   const handleCheckout = async (mode: CheckoutMode) => {
@@ -368,6 +419,7 @@ export function CustomerJourneyPage({
     }
 
     setCheckoutState({ status: 'loading', mode })
+    setPaymentState({ status: 'idle' })
     const intentResponse = await bookingService.createBookingIntent({
       businessId: selectedBusinessId,
       serviceId: selectedService.id,
@@ -394,10 +446,44 @@ export function CustomerJourneyPage({
         setCheckoutState({ status: 'error', error: holdResponse.error })
         return
       }
+
+      setPaymentState({ status: 'idle' })
     }
 
     setCheckoutState({ status: 'success', mode, intent })
     onIntentCreated(intent)
+
+    if (mode === 'pay') {
+      setPaymentState({ status: 'processing', method: paymentMethod })
+      const paymentResponse = await paymentService.processPayment({
+        intentId: intent.intentId,
+        amountCents: selectedService.priceCents,
+        currency: selectedService.currency,
+        paymentMethod,
+      })
+
+      if (paymentResponse.status === 'failure') {
+        setPaymentState({
+          status: 'failure',
+          outcome: { status: 'failure', message: paymentResponse.error.message },
+        })
+        setCheckoutState({ status: 'error', error: { code: 'UNAVAILABLE', message: paymentResponse.error.message } })
+        await runNotifyOutcome(mode, intent)
+        return
+      }
+
+      setPaymentState(
+        paymentResponse.data.status === 'success'
+          ? { status: 'success', outcome: paymentResponse.data }
+          : paymentResponse.data.status === 'retry'
+            ? { status: 'retry', outcome: paymentResponse.data }
+            : { status: 'failure', outcome: paymentResponse.data },
+      )
+
+      await runNotifyOutcome(mode, intent, paymentResponse.data)
+      return
+    }
+
     await runNotifyOutcome(mode, intent)
   }
 
@@ -449,11 +535,15 @@ export function CustomerJourneyPage({
                 ? 'active'
                 : 'pending',
       note:
-        checkoutState.status === 'success'
-          ? checkoutState.mode === 'pay'
-            ? 'Pay-now checkout completed.'
-            : 'Hold fallback completed.'
-          : 'Use Pay now for the golden path; Place hold is fallback.',
+        paymentState.status === 'retry'
+          ? 'Payment retry required.'
+          : paymentState.status === 'failure'
+            ? 'Payment failed; choose another method or hold fallback.'
+            : checkoutState.status === 'success'
+              ? checkoutState.mode === 'pay'
+                ? 'Pay-now checkout completed.'
+                : 'Hold fallback completed.'
+              : 'Use Pay now for the golden path; Place hold is fallback.',
     },
     {
       title: '5. Notify / Outcome',
@@ -531,19 +621,56 @@ export function CustomerJourneyPage({
             </div>
             <div className="space-y-2">
               <p className="text-sm font-medium">Service</p>
-              <div className="flex flex-wrap gap-2">
-                {discoverState.data.services.map((service) => (
-                  <Button
-                    key={service.id}
-                    type="button"
-                    size="sm"
-                    variant={service.id === selectedServiceId ? 'default' : 'outline'}
-                    onClick={() => onServiceSelect(service.id)}
-                  >
-                    {service.name} · {service.durationMinutes}m · {service.priceLabel}
-                  </Button>
-                ))}
-              </div>
+              <label className="flex max-w-sm flex-col gap-1 text-sm">
+                Search services
+                <div className="flex gap-2">
+                  <input
+                    type="search"
+                    value={serviceQuery}
+                    onChange={(event) => setServiceQuery(event.target.value)}
+                    placeholder="Search by service name, duration, or price"
+                    className="min-w-0 flex-1 rounded border border-border bg-background px-2 py-1 text-sm"
+                  />
+                  {hasServiceSearch && (
+                    <Button type="button" size="sm" variant="outline" onClick={() => setServiceQuery('')}>
+                      Clear
+                    </Button>
+                  )}
+                </div>
+              </label>
+              {discoverState.data.services.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No services are available for this business. Try another business or contact support.
+                </p>
+              ) : filteredServices.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No services match "{serviceQuery.trim()}". Try a shorter search or switch business.
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {filteredServices.map((service) => (
+                    <Button
+                      key={service.id}
+                      type="button"
+                      size="sm"
+                      variant={service.id === selectedServiceId ? 'default' : 'outline'}
+                      onClick={() => onServiceSelect(service.id)}
+                    >
+                      {service.name} · {service.durationMinutes}m · {service.priceLabel}
+                    </Button>
+                  ))}
+                </div>
+              )}
+              {hasServiceSearch && filteredServices.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Showing {filteredServices.length} of {discoverState.data.services.length} services.
+                </p>
+              )}
+              {selectedServiceHiddenBySearch && (
+                <p className="text-xs text-muted-foreground">
+                  Your selected service is hidden by the current search. Clear the search to review it again.
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <p className="text-sm font-medium">Select a staff member</p>
@@ -621,6 +748,35 @@ export function CustomerJourneyPage({
         )}
       </section>
 
+      <section className="space-y-3 rounded border p-3">
+        <h3 className="text-sm font-medium">Customer reviews</h3>
+        <p className="text-xs text-muted-foreground">
+          Reviews are shown in a privacy-safe format without customer names or sensitive details.
+        </p>
+        {reviewState.status === 'idle' && <p className="text-sm text-muted-foreground">{reviewState.message}</p>}
+        {reviewState.status === 'empty' && <p className="text-sm text-muted-foreground">{reviewState.message}</p>}
+        {reviewState.status === 'success' && (
+          <div className="space-y-2">
+            {selectedService && (
+              <p className="text-sm text-muted-foreground">Showing reviews for {selectedService.name}.</p>
+            )}
+            <ul className="space-y-2">
+              {reviewState.reviews.map((review, index) => (
+                <li key={`${review.serviceId}-${review.dateLabel}-${index}`} className="rounded border p-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm font-medium">{review.reviewerLabel}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {review.rating}/5 · {review.dateLabel}
+                    </p>
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">{review.quote}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </section>
+
       <section className="space-y-2 rounded border p-3">
         <h3 className="text-sm font-medium">Confirm details</h3>
         {confirmState.status === 'idle' && <p className="text-sm text-muted-foreground">{confirmState.message}</p>}
@@ -642,6 +798,18 @@ export function CustomerJourneyPage({
 
       <section className="space-y-2 rounded border p-3">
         <h3 className="text-sm font-medium">Complete Your Booking</h3>
+        <label className="flex max-w-xs flex-col gap-1 text-sm">
+          Payment method
+          <select
+            value={paymentMethod}
+            onChange={(event) => setPaymentMethod(event.target.value as PaymentMethod)}
+            className="rounded border border-border bg-background px-2 py-1 text-sm"
+          >
+            <option value="card">Card</option>
+            <option value="wallet">Wallet</option>
+            <option value="manual">Manual</option>
+          </select>
+        </label>
         <div className="flex flex-wrap gap-2">
           <Button
             type="button"
@@ -649,9 +817,23 @@ export function CustomerJourneyPage({
             onClick={() => void handleCheckout('pay')}
             disabled={confirmState.status !== 'success' || checkoutState.status === 'loading'}
           >
-            Confirm and Pay
+            Pay now
           </Button>
         </div>
+        {paymentState.status === 'processing' && (
+          <p className="text-sm text-muted-foreground">Processing {paymentState.method} payment...</p>
+        )}
+        {paymentState.status === 'success' && (
+          <p className="text-sm text-foreground">Payment successful: {paymentState.outcome.message}</p>
+        )}
+        {paymentState.status === 'retry' && (
+          <p className="text-sm text-muted-foreground">
+            Payment retry needed: {paymentState.outcome.message}. Try card to complete the booking.
+          </p>
+        )}
+        {paymentState.status === 'failure' && (
+          <p className="text-sm text-destructive">Payment failed: {paymentState.outcome.message}</p>
+        )}
         {checkoutState.status === 'idle' && (
           <p className="text-sm text-muted-foreground">
             Next action: use Pay now to continue the golden path. Place hold only if needed.
@@ -689,7 +871,9 @@ export function CustomerJourneyPage({
         )}
         {notifyState.status === 'success' && (
           <div className="space-y-1">
-            <p className="text-sm font-medium">{notifyState.data.headline}</p>
+            <p className="text-sm font-medium">
+              {notifyState.data.headline} <span className="text-xs text-muted-foreground">({notifyState.data.tone})</span>
+            </p>
             <p className="text-sm text-muted-foreground">{notifyState.data.detail}</p>
             <p className="text-xs text-muted-foreground">{notifyState.data.nextAction}</p>
           </div>

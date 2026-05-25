@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { filterItemsByQuery, isServiceSearchEmpty } from '@/lib/service-search'
 import type { CatalogDiscoveryService } from '@/services/interfaces'
 import type { ApiErrorContract } from '@/types/api'
 import type { BusinessId, BusinessSummary } from '@/types/business'
@@ -37,6 +38,7 @@ export function CatalogPage({
   onStaffSelect,
 }: CatalogPageProps) {
   const [state, setState] = useState<CatalogLoadState>({ status: 'loading' })
+  const [serviceQuery, setServiceQuery] = useState('')
 
   useEffect(() => {
     const loadCatalog = async () => {
@@ -71,6 +73,20 @@ export function CatalogPage({
     void loadCatalog()
   }, [catalogService, selectedBusinessId])
 
+  const filteredServices =
+    state.status === 'success'
+      ? filterItemsByQuery(state.services, serviceQuery, (service) =>
+          [
+            service.name,
+            service.id,
+            `${service.durationMinutes} minutes`,
+            `${service.durationMinutes}m`,
+            `${service.currency} ${(service.priceCents / 100).toFixed(2)}`,
+          ].join(' '),
+        )
+      : []
+  const hasServiceSearch = !isServiceSearchEmpty(serviceQuery)
+
   return (
     <div className="space-y-5">
       <h2 className="text-lg font-medium">Browse Services</h2>
@@ -102,11 +118,32 @@ export function CatalogPage({
           </section>
           <section className="space-y-2">
             <h3 className="text-sm font-medium">Services</h3>
+            <label className="flex max-w-sm flex-col gap-1 text-sm">
+              Search services
+              <div className="flex gap-2">
+                <input
+                  type="search"
+                  value={serviceQuery}
+                  onChange={(event) => setServiceQuery(event.target.value)}
+                  placeholder="Search by service name, duration, or price"
+                  className="min-w-0 flex-1 rounded border border-border bg-background px-2 py-1 text-sm"
+                />
+                {hasServiceSearch && (
+                  <Button type="button" size="sm" variant="outline" onClick={() => setServiceQuery('')}>
+                    Clear
+                  </Button>
+                )}
+              </div>
+            </label>
             {state.services.length === 0 ? (
               <p className="text-sm text-muted-foreground">No services available. Please contact support.</p>
+            ) : filteredServices.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No services match "{serviceQuery.trim()}". Try a shorter search or choose another business.
+              </p>
             ) : (
               <ul className="space-y-2">
-                {state.services.map((service) => (
+                {filteredServices.map((service) => (
                   <li key={service.id} className="flex flex-wrap items-center justify-between gap-2 rounded border p-2">
                     <div>
                       <p className="text-sm font-medium">{service.name}</p>
@@ -125,6 +162,11 @@ export function CatalogPage({
                   </li>
                 ))}
               </ul>
+            )}
+            {hasServiceSearch && filteredServices.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Showing {filteredServices.length} of {state.services.length} services.
+              </p>
             )}
           </section>
           <section className="space-y-2">

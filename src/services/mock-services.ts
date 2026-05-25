@@ -18,17 +18,24 @@ import type {
   ProviderBookingsView,
   ProviderBookingStatusUpdateInput,
 } from '@/types/provider-ops'
+import type { BookingLifecycleEvent, BookingNotification } from '@/types/notification'
+import type { PaymentOutcome, PaymentRequest } from '@/types/payment'
 import type { ServiceDefinition } from '@/types/service'
 import type { StaffProfile } from '@/types/staff'
 import type {
   AvailabilityQueryService,
   BookingService,
   CatalogDiscoveryService,
+  NotificationService,
   ProviderOperationsService,
+  PaymentService,
   ServiceRegistry,
 } from '@/services/interfaces'
 
-const businesses: BusinessSummary[] = [{ id: 'biz_main', name: 'Aurora Wellness Studio' }]
+const businesses: BusinessSummary[] = [
+  { id: 'biz_main', name: 'Aurora Wellness Studio' },
+  { id: 'biz_serenity', name: 'Aurora Serenity Studio' },
+]
 
 const services: ServiceDefinition[] = [
   {
@@ -40,6 +47,15 @@ const services: ServiceDefinition[] = [
     currency: 'ZAR',
     isBookable: true,
   },
+  {
+    id: 'svc_massage',
+    businessId: 'biz_serenity',
+    name: 'Restorative Massage',
+    durationMinutes: 60,
+    priceCents: 82000,
+    currency: 'ZAR',
+    isBookable: true,
+  },
 ]
 
 const staffMembers: StaffProfile[] = [
@@ -48,6 +64,13 @@ const staffMembers: StaffProfile[] = [
     businessId: 'biz_main',
     displayName: 'Amy Daniels',
     serviceIds: ['svc_consult'],
+    isActive: true,
+  },
+  {
+    id: 'stf_jade',
+    businessId: 'biz_serenity',
+    displayName: 'Jade Ngwenya',
+    serviceIds: ['svc_massage'],
     isActive: true,
   },
 ]
@@ -83,6 +106,16 @@ const slots: AvailabilitySlot[] = [
     state: 'open',
     isBookable: true,
   },
+  {
+    id: 'slot_101',
+    businessId: 'biz_serenity',
+    serviceId: 'svc_massage',
+    staffId: 'stf_jade',
+    startIso: '2026-01-20T12:00:00.000Z',
+    endIso: '2026-01-20T13:00:00.000Z',
+    state: 'open',
+    isBookable: true,
+  },
 ]
 
 const bookingRecords: Booking[] = [
@@ -108,9 +141,29 @@ const bookingRecords: Booking[] = [
     endIso: '2026-01-20T10:45:00.000Z',
     status: 'pending',
   },
+  {
+    id: 'bk_101',
+    businessId: 'biz_serenity',
+    serviceId: 'svc_massage',
+    staffId: 'stf_jade',
+    customerId: 'cus_demo',
+    slotId: 'slot_101',
+    startIso: '2026-01-20T12:00:00.000Z',
+    endIso: '2026-01-20T13:00:00.000Z',
+    status: 'confirmed',
+  },
 ]
 
 const bookingStatusOrder: BookingStatus[] = ['pending', 'confirmed', 'cancelled']
+const servicesByBusinessCache = new Map<string, ServiceDefinition[]>()
+const staffByBusinessCache = new Map<string, StaffProfile[]>()
+const availabilityByQueryCache = new Map<string, AvailabilitySlot[]>()
+const bookingsViewCache = new Map<string, ProviderBookingsView>()
+
+const invalidateDynamicCaches = () => {
+  availabilityByQueryCache.clear()
+  bookingsViewCache.clear()
+}
 
 // Helper: Synchronize slot state after booking status change
 const synchronizeSlotStateAfterBookingStatusChange = (
@@ -155,14 +208,28 @@ const catalog: CatalogDiscoveryService = {
       return fail({ code: 'NOT_FOUND', message: 'Business not found' })
     }
 
-    return ok(services.filter((service) => service.businessId === businessId))
+    const cached = servicesByBusinessCache.get(businessId)
+    if (cached) {
+      return ok(cached)
+    }
+
+    const result = services.filter((service) => service.businessId === businessId)
+    servicesByBusinessCache.set(businessId, result)
+    return ok(result)
   },
   async listStaffByBusiness(businessId: string): Promise<ApiResult<StaffProfile[]>> {
     if (businessId === 'biz_unavailable') {
       return fail({ code: 'UNAVAILABLE', message: 'Catalog unavailable for this business' })
     }
 
-    return ok(staffMembers.filter((staffMember) => staffMember.businessId === businessId))
+    const cached = staffByBusinessCache.get(businessId)
+    if (cached) {
+      return ok(cached)
+    }
+
+    const result = staffMembers.filter((staffMember) => staffMember.businessId === businessId)
+    staffByBusinessCache.set(businessId, result)
+    return ok(result)
   },
 }
 
@@ -172,15 +239,22 @@ const availability: AvailabilityQueryService = {
       return fail({ code: 'UNAVAILABLE', message: 'No available times for this date. Please try another date.' })
     }
 
-    return ok(
-      slots.filter(
-        (slot) =>
-          slot.businessId === query.businessId &&
-          slot.serviceId === query.serviceId &&
-          slot.staffId === query.staffId &&
-          slot.startIso.startsWith(query.dateIso),
-      ),
+    const cacheKey = `${query.businessId}:${query.serviceId}:${query.staffId}:${query.dateIso}`
+    const cached = availabilityByQueryCache.get(cacheKey)
+    if (cached) {
+      return ok(cached)
+    }
+
+    const result = slots.filter(
+      (slot) =>
+        slot.businessId === query.businessId &&
+        slot.serviceId === query.serviceId &&
+        slot.staffId === query.staffId &&
+        slot.startIso.startsWith(query.dateIso),
     )
+
+    availabilityByQueryCache.set(cacheKey, result)
+    return ok(result)
   },
 }
 
@@ -246,6 +320,7 @@ const bookings: BookingService = {
     const previousStatus = booking.status
     booking.status = 'cancelled'
     synchronizeSlotStateAfterBookingStatusChange(booking, previousStatus, booking.status)
+    invalidateDynamicCaches()
     return ok(booking)
   },
 }
@@ -254,6 +329,11 @@ const providerOps: ProviderOperationsService = {
   async getBookingsView(businessId: string): Promise<ApiResult<ProviderBookingsView>> {
     if (businessId === 'biz_unavailable') {
       return fail({ code: 'UNAVAILABLE', message: 'Provider queue is unavailable' })
+    }
+
+    const cached = bookingsViewCache.get(businessId)
+    if (cached) {
+      return ok(cached)
     }
 
     const businessBookings = bookingRecords.filter((booking) => booking.businessId === businessId)
@@ -311,13 +391,16 @@ const providerOps: ProviderOperationsService = {
         isBookable: slot.isBookable,
       }))
 
-    return ok({
+    const result = {
       businessId,
       generatedAtIso: '2026-01-20T08:00:00.000Z',
       queueGroups,
       calendarDays,
       slotSnapshots,
-    })
+    }
+
+    bookingsViewCache.set(businessId, result)
+    return ok(result)
   },
   async updateBookingStatus(
     input: ProviderBookingStatusUpdateInput,
@@ -340,6 +423,7 @@ const providerOps: ProviderOperationsService = {
     const previousStatus = booking.status
     booking.status = input.nextStatus
     synchronizeSlotStateAfterBookingStatusChange(booking, previousStatus, booking.status)
+    invalidateDynamicCaches()
 
     return ok({
       booking,
@@ -402,6 +486,7 @@ const providerOps: ProviderOperationsService = {
     const previousState = slot.state
     slot.state = input.nextState
     slot.isBookable = input.nextState === 'open'
+    invalidateDynamicCaches()
 
     return ok({
       slot,
@@ -421,9 +506,82 @@ const providerOps: ProviderOperationsService = {
   },
 }
 
+const payments: PaymentService = {
+  async processPayment(input: PaymentRequest): Promise<ApiResult<PaymentOutcome>> {
+    if (input.amountCents <= 0) {
+      return fail({ code: 'VALIDATION_ERROR', message: 'Payment amount must be greater than zero' })
+    }
+
+    if (input.paymentMethod === 'wallet') {
+      return ok({
+        status: 'retry',
+        retryAfterMs: 1500,
+        message: 'Your wallet payment needs a quick retry.',
+      })
+    }
+
+    if (input.paymentMethod === 'manual') {
+      return ok({
+        status: 'failure',
+        message: 'Manual payment could not be completed right now.',
+      })
+    }
+
+    return ok({
+      status: 'success',
+      paymentReference: `pay_${input.intentId}`,
+      message: 'Payment completed successfully.',
+    })
+  },
+}
+
+const notifications: NotificationService = {
+  async publishBookingLifecycleEvent(input: BookingLifecycleEvent): Promise<ApiResult<BookingNotification>> {
+    switch (input.kind) {
+      case 'booking_confirmed':
+        return ok({
+          headline: 'Booking confirmed',
+          detail: `Your booking ${input.intentId} is confirmed and ready.`,
+          nextAction: 'Next action: Check your inbox for the confirmation summary.',
+          tone: 'success',
+        })
+      case 'booking_held':
+        return ok({
+          headline: 'Hold placed',
+          detail: `Your booking ${input.intentId} is temporarily held while you complete payment.`,
+          nextAction: 'Next action: Complete payment before the hold expires.',
+          tone: 'warning',
+        })
+      case 'payment_retry':
+        return ok({
+          headline: 'Payment retry needed',
+          detail: 'The payment needs one more attempt before it can be completed.',
+          nextAction: 'Next action: Retry payment using a card.',
+          tone: 'warning',
+        })
+      case 'payment_failed':
+        return ok({
+          headline: 'Payment could not be completed',
+          detail: 'The payment did not go through. You can try again or choose another method.',
+          nextAction: 'Next action: Retry payment or use the hold option.',
+          tone: 'error',
+        })
+      default:
+        return ok({
+          headline: 'Booking update',
+          detail: 'Your booking has a new status update.',
+          nextAction: 'Next action: Continue the booking flow.',
+          tone: 'success',
+        })
+    }
+  },
+}
+
 export const createMockServiceRegistry = (): ServiceRegistry => ({
   catalog,
   availability,
   bookings,
   providerOps,
+  payments,
+  notifications,
 })

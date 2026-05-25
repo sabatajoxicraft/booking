@@ -3,6 +3,8 @@ import type { ApiResult } from '@/types/api'
 import type { Booking, BookingId, BookingIntent, CancelBookingInput, CreateBookingIntentInput } from '@/types/booking'
 import type { BusinessSummary } from '@/types/business'
 import type { CustomerId } from '@/types/customer'
+import type { BookingLifecycleEvent, BookingNotification } from '@/types/notification'
+import type { PaymentOutcome, PaymentRequest } from '@/types/payment'
 import type {
   ProviderAvailabilityActionResult,
   ProviderAvailabilitySlotStateUpdateInput,
@@ -40,9 +42,19 @@ export interface ProviderOperationsService {
   ): Promise<ApiResult<ProviderAvailabilityActionResult>>
 }
 
+export interface PaymentService {
+  processPayment(input: PaymentRequest): Promise<ApiResult<PaymentOutcome>>
+}
+
+export interface NotificationService {
+  publishBookingLifecycleEvent(input: BookingLifecycleEvent): Promise<ApiResult<BookingNotification>>
+}
+
 export interface ServiceRegistry {
   catalog: CatalogDiscoveryService
   availability: AvailabilityQueryService
   bookings: BookingService
   providerOps: ProviderOperationsService
+  payments: PaymentService
+  notifications: NotificationService
 }
