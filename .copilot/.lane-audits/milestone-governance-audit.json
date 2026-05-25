@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-25T02:05:42.711Z",
+  "generatedAt": "2026-05-25T02:08:35.526Z",
   "status": "pass",
   "checkedBoards": [
     "M1",
@@ -7,7 +7,7 @@
     "M3",
     "M4"
   ],
-  "activeMilestone": "M4",
+  "activeMilestone": null,
   "requiredReleasedTags": [
     {
       "milestone": "M2",

@@ -8,12 +8,12 @@
 - **M1 (Feature delivery):** ✅ Complete and merged
 - **M2 (Feature wave):** ✅ Complete and released
 - **M3 (Optimization and readiness):** ✅ Complete and released
-- **M4 (Governance acceleration):** 🟡 Kickoff in progress (`.copilot/m4-tasks.md`)
+- **M4 (Governance acceleration):** ✅ Complete and released
 
 ## Immediate Next Tasks
-1. **Run M4-C1:** Perform integrated governance merge for completed M4 lanes.
-2. **Run M4-C2:** Execute specialist gate sweep with research-strategy and release-governance evidence.
-3. **Run M4-C3/C4:** Validate CI evidence and close milestone acceptance once convergence passes.
+1. **Prepare next milestone kickoff:** Start M5 board only after mandate/session alignment.
+2. **Preserve M4 automation:** Keep governance audits and smoke capture current.
+3. **Use protected PR workflow:** Continue merge/release handling through required checks.
 
 ## M1 Closure Status
 ✅ All 6 rows complete (Golden Path + 3 Parallel Lanes + Convergence Gates + Acceptance)
@@ -27,5 +27,5 @@
 - ✅ M1 complete: All three lanes and convergence steps passed required gates.
 - ✅ M2 complete: tranche 1, 2, and 3 tasks are complete and validated.
 - ✅ M3 complete: all lane tasks and convergence checkpoints are complete and validated.
-- `.copilot/m1-tasks.md`, `.copilot/m2-tasks.md`, and `.copilot/m3-tasks.md` show closed boards.
-- `.copilot/m4-tasks.md` is now the active execution board.
+- ✅ M4 complete: governance automation, trigger audits, milestone-close checks, and smoke process are merged and validated.
+- `.copilot/m1-tasks.md`, `.copilot/m2-tasks.md`, `.copilot/m3-tasks.md`, and `.copilot/m4-tasks.md` show closed boards.
