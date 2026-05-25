@@ -28,4 +28,5 @@
 - ✅ M2 complete: tranche 1, 2, and 3 tasks are complete and validated.
 - ✅ M3 complete: all lane tasks and convergence checkpoints are complete and validated.
 - ✅ M4 complete: governance automation, trigger audits, milestone-close checks, and smoke process are merged and validated.
-- `.copilot/m1-tasks.md`, `.copilot/m2-tasks.md`, `.copilot/m3-tasks.md`, and `.copilot/m4-tasks.md` show closed boards.
+- ✅ M5 complete: all scale, features, and resilience lanes are merged and released.
+- `.copilot/m1-tasks.md`, `.copilot/m2-tasks.md`, `.copilot/m3-tasks.md`, `.copilot/m4-tasks.md`, and `.copilot/m5-tasks.md` show closed boards.
