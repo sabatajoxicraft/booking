@@ -12,6 +12,10 @@
 - **Check:** `src/components/ui/*` remains primitive UI substrate aligned to atom-level building blocks; molecules/organisms/templates/pages may import these primitives.
 - **Failure condition:** higher-order components or page-level behavior are authored under `src/components/ui`, or docs define `ui` primitives outside atom-level/shared-primitive semantics.
 
+## UI/UX Specialist (experience integrity)
+- **Check:** critical actions remain visually clear, state feedback is explicit, and key decision context is available at the point of action.
+- **Failure condition:** visual ambiguity, hidden primary actions, or interaction regressions that increase completion friction.
+
 ## Flow Integrity
 - **Check:** all booking states expose valid next actions and terminal-state rules.
 - **Failure condition:** dead-end states, hidden transitions, or mutable terminal states.

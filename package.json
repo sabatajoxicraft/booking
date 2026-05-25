@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "release:readiness": "node scripts/release-readiness-check.mjs",
     "preview": "vite preview",
     "server": "node server/server.js",
     "db:init": "node server/db/init-db.js",

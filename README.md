@@ -1,5 +1,7 @@
 # Booking Platform
 
+[![CI](https://github.com/sabatajoxicraft/booking/actions/workflows/test-lint.yml/badge.svg)](https://github.com/sabatajoxicraft/booking/actions/workflows/test-lint.yml)
+
 ## Product Overview
 Booking is a brand-led booking experience focused on **clarity, confidence, and completion** for both customers and providers.
 

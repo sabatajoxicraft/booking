@@ -157,11 +157,17 @@
    "Brand B3: Error messages customer-friendly with no technical jargon or error codes exposed.",
    "Brand B3: Tone verified as calm/clear/trustworthy across all journey stages per PRD brand promise.",
    "Brand B3: Type check (tsc -b), lint (eslint), and build (vite) all passed; 0 regressions.",
-   "Brand B3: .copilot/.lane-audits/brand-b3-evidence.md contains full compliance matrix and gate validation."
+   "Brand B3: .copilot/.lane-audits/brand-b3-evidence.md contains full compliance matrix and gate validation.",
+   "M3 Conversion: customer journey now provides recommendation hints for service/staff and recommended time guidance.",
+   "M3 Conversion: telemetry events recorded for step completion and drop-off reasons in customer journey flow.",
+   "M3 Provider Ops: provider dashboard includes day-plan summary cards and guarded bulk cancellation action.",
+   "M3 Reliability: service health indicators shown on both customer and provider surfaces with fallback messaging.",
+   "M3 Reliability: automated release readiness check added (`npm run release:readiness`) and enforced in CI workflow.",
+   "M3 Validation: npm run lint, npm run build, and npm run release:readiness all passed."
   ],
   "gatesSummary": {
    "checkpoint": "C2 - Specialist Gate Sweep",
-   "timestamp": "2025-01-20T00:00:00Z",
+   "timestamp": "2026-05-25T01:25:00Z",
    "total": 6,
    "passing": 6,
    "failing": 0,

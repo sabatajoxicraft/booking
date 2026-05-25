@@ -7,10 +7,11 @@
 - **M0.5 (Scaffold + governance revalidation):** Complete
 - **M1 (Feature delivery):** ✅ Complete, ready for merge to main
 - **M2 (Feature wave):** ✅ Complete, ready for merge to main
+- **M3 (Optimization and readiness):** ✅ Complete, ready for merge to main
 
 ## Immediate Next Tasks
-1. **Merge/release handling:** Follow release governance for mainline integration.
-2. **Post-merge planning:** Start the next feature roadmap only after merge governance closes.
+1. **Merge/release handling:** Merge `dev` through protected PR workflow.
+2. **Post-merge release:** Publish updated release notes and verify live environment.
 
 ## M1 Closure Status
 ✅ All 6 rows complete (Golden Path + 3 Parallel Lanes + Convergence Gates + Acceptance)
@@ -23,5 +24,6 @@
 ## Progression Rules
 - ✅ M1 complete: All three lanes and convergence steps passed required gates.
 - ✅ M2 complete: tranche 1, 2, and 3 tasks are complete and validated.
-- `.copilot/m1-tasks.md` and `.copilot/m2-tasks.md` both show closed boards.
-- Next: merge/release handling under release governance.
+- ✅ M3 complete: all lane tasks and convergence checkpoints are complete and validated.
+- `.copilot/m1-tasks.md`, `.copilot/m2-tasks.md`, and `.copilot/m3-tasks.md` show closed boards.
+- Next: release governance and protected-branch merge handling.

@@ -1,17 +1,17 @@
 # Session State
 
 ## Active Context
-- **Mode:** Project closure
-- **Current focus:** Milestone documentation consistency
-- **Delivery model:** Feature work complete, awaiting merge/release handling
+- **Mode:** M3 closure
+- **Current focus:** Documentation consistency and merge readiness
+- **Delivery model:** Feature work complete, protected-branch merge workflow
 
 ## Working Queue
 1. Keep canonical booking flow ownership in `.copilot/prd.md`.
 2. Preserve board/document consistency for closed milestones.
-3. Maintain release-governance gating for branch/version/release decisions.
-4. Avoid reopening feature scope without a new milestone.
+3. Complete protected-branch PR merge and release governance checks.
+4. Keep release-readiness automation active in CI.
 
-## Exit Criteria for Closure Session
-- Milestone and board artifacts reflect completed work.
-- Validation evidence remains aligned with the closed state.
-- Merge/release handling is the only remaining step.
+## Exit Criteria for M3 Closure Session
+- M3 board and milestone artifacts reflect completed work.
+- Validation evidence remains aligned with latest implementation.
+- PR merge/release handling is the only remaining step.
