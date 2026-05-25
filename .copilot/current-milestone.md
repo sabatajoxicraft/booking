@@ -9,19 +9,20 @@
 - **M2 (Feature wave):** ✅ Complete and released
 - **M3 (Optimization and readiness):** ✅ Complete and released
 - **M4 (Governance acceleration):** ✅ Complete and released
+- **M5 (Scale, features, and resilience):** ✅ Complete and released
 
 ## Immediate Next Tasks
-1. **Prepare next milestone kickoff:** Start M5 board only after mandate/session alignment.
-2. **Preserve M4 automation:** Keep governance audits and smoke capture current.
+1. **Prepare next milestone kickoff:** Start M6 board only after mandate/session alignment.
+2. **Maintain post-M5 governance audit coverage:** Keep governance audits and smoke capture current.
 3. **Use protected PR workflow:** Continue merge/release handling through required checks.
 
-## M1 Closure Status
-✅ All 6 rows complete (Golden Path + 3 Parallel Lanes + Convergence Gates + Acceptance)
-✅ All 6 specialist gates passing (6/6)
-✅ CI checks green (lint, build, type-check)
-✅ Evidence recorded in `.copilot/gate-evidence.json`
-✅ Closure summary: `.copilot/.lane-audits/m1-closure-summary.md`
-📝 Ready for merge to `main` branch
+## M5 Closure Status
+✅ All 5 lane deliverables complete (Scale: S1, S2 · Features: F1, F2 · Resilience: R1)
+✅ All 4 convergence steps complete (C1 integrated merge · C2 specialist gate sweep · C3 CI + evidence · C4 acceptance)
+✅ Specialist gates passing: DRY, KISS, Flow Integrity, Brand Consistency, Research Strategy, Release Governance
+✅ CI checks green (ESLint, TypeScript, Vite production build)
+✅ Evidence recorded in `.copilot/gate-evidence.json` (4/4 checkpoints passing, timestamp 2026-05-25)
+✅ M5 complete and released
 
 ## Progression Rules
 - ✅ M1 complete: All three lanes and convergence steps passed required gates.

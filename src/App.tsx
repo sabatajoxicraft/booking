@@ -5,7 +5,7 @@ import { createMockServiceRegistry } from '@/services/mock-services'
 import type { AvailabilitySlotId } from '@/types/availability-slot'
 import type { BookingIntent } from '@/types/booking'
 import type { BusinessId } from '@/types/business'
-import type { CustomerId } from '@/types/customer'
+import type { CustomerProfile } from '@/types/customer'
 import type { ServiceId } from '@/types/service'
 import type { StaffId } from '@/types/staff'
 
@@ -46,7 +46,11 @@ function App() {
   const [createdIntents, setCreatedIntents] = useState<BookingIntent[]>([])
 
   const services = useMemo(() => createMockServiceRegistry(), [])
-  const customerId: CustomerId = 'cus_demo'
+  const [customerProfile, setCustomerProfile] = useState<CustomerProfile>({
+    id: 'cus_demo',
+    fullName: 'Demo Customer',
+    email: 'demo@example.com',
+  })
 
   const routes: Array<{ key: RouteKey; label: string }> = [
     { key: 'catalog', label: 'Catalog' },
@@ -106,7 +110,7 @@ function App() {
         businessId={selectedBusinessId}
         selectedServiceId={selectedServiceId}
         selectedSlotId={selectedSlotId}
-        customerId={customerId}
+        customerProfile={customerProfile}
         intents={createdIntents}
         onIntentCreated={handleIntentCreated}
       />
@@ -133,7 +137,8 @@ function App() {
         selectedStaffId={selectedStaffId}
         selectedDateIso={selectedDateIso}
         selectedSlotId={selectedSlotId}
-        customerId={customerId}
+        customerProfile={customerProfile}
+        onProfileChange={setCustomerProfile}
         onBusinessSelect={(businessId) => {
           setSelectedBusinessId(businessId)
           setSelectedServiceId(null)
@@ -160,7 +165,7 @@ function App() {
       <AppShellTemplate
         title="Booking System"
         subtitle="Complete your appointment in minutes"
-        statusLabel="M3 execution"
+        statusLabel="M5 complete"
         routes={routes}
         activeRoute={activeRoute}
         onRouteSelect={setActiveRoute}

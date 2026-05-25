@@ -1,4 +1,4 @@
-export type JourneyStep = 'discover' | 'select' | 'confirm' | 'checkout' | 'notify'
+export type JourneyStep = 'discover' | 'select' | 'customer-details' | 'confirm' | 'checkout' | 'notify'
 
 export type JourneyEventType = 'step_viewed' | 'step_completed' | 'dropoff'
 

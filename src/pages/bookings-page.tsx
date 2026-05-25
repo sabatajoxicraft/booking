@@ -7,7 +7,8 @@ import type { ApiErrorContract } from '@/types/api'
 import type { AvailabilitySlotId } from '@/types/availability-slot'
 import type { Booking, BookingIntent, BookingStatus, CreateBookingIntentInput } from '@/types/booking'
 import type { BusinessId } from '@/types/business'
-import type { CustomerId } from '@/types/customer'
+import type { CustomerProfile } from '@/types/customer'
+import { validateCustomerDetails } from '@/types/customer'
 import type { ServiceId } from '@/types/service'
 
 type BookingsLoadState =
@@ -38,7 +39,7 @@ interface BookingsPageProps {
   businessId: BusinessId
   selectedServiceId: ServiceId | null
   selectedSlotId: AvailabilitySlotId | null
-  customerId: CustomerId
+  customerProfile: CustomerProfile
   intents: BookingIntent[]
   onIntentCreated: (intent: BookingIntent) => void
 }
@@ -48,10 +49,12 @@ export function BookingsPage({
   businessId,
   selectedServiceId,
   selectedSlotId,
-  customerId,
+  customerProfile,
   intents,
   onIntentCreated,
 }: BookingsPageProps) {
+  const customerId = customerProfile.id
+  const customerDetailsState = validateCustomerDetails(customerProfile)
   const [bookingsState, setBookingsState] = useState<BookingsLoadState>({ status: 'loading' })
   const [intentState, setIntentState] = useState<IntentCreateState>({ status: 'idle' })
   const [cancelState, setCancelState] = useState<CancelBookingState>({ status: 'idle' })
@@ -72,7 +75,7 @@ export function BookingsPage({
     void loadInitialBookings()
   }, [bookingService, customerId])
 
-  const canCreateIntent = Boolean(selectedServiceId && selectedSlotId)
+  const canCreateIntent = Boolean(selectedServiceId && selectedSlotId && customerDetailsState.status === 'success')
 
   const handleCancelBooking = async (bookingId: string) => {
     setCancelState({ status: 'loading' })
@@ -102,11 +105,20 @@ export function BookingsPage({
       return
     }
 
+    if (customerDetailsState.status !== 'success') {
+      return
+    }
+
     const payload: CreateBookingIntentInput = {
       businessId,
       serviceId: selectedServiceId,
       slotId: selectedSlotId,
       customerId,
+      customerDetails: {
+        fullName: customerProfile.fullName.trim(),
+        email: customerProfile.email.trim(),
+        phoneE164: customerProfile.phoneE164?.trim() || undefined,
+      },
     }
 
     setIntentState({ status: 'loading' })
@@ -127,7 +139,12 @@ export function BookingsPage({
       <section className="space-y-2 rounded border p-3">
         <h3 className="text-sm font-medium">Reserve This Appointment</h3>
         <p className="text-sm text-muted-foreground">Your Reservation</p>
-        {!canCreateIntent && (
+        {!canCreateIntent && selectedServiceId && selectedSlotId && customerDetailsState.status !== 'success' && (
+          <p className="text-sm text-muted-foreground">
+            Complete your customer details in the customer journey before reserving a slot.
+          </p>
+        )}
+        {!canCreateIntent && !(selectedServiceId && selectedSlotId) && (
           <p className="text-sm text-muted-foreground">
             Select a service and availability slot before making a reservation.
           </p>
