@@ -35,6 +35,10 @@ import type {
   ServiceRegistry,
   TelemetryService,
 } from '@/services/interfaces'
+import { MultiRegionService } from '@/services/multi-region'
+import { WaitlistService } from '@/services/waitlist'
+import { TimeOffService } from '@/services/time-off'
+import { ResilientService } from '@/services/resilience'
 
 const businesses: BusinessSummary[] = [
   { id: 'biz_main', name: 'Aurora Wellness Studio' },
@@ -164,6 +168,11 @@ const staffByBusinessCache = new Map<string, StaffProfile[]>()
 const availabilityByQueryCache = new Map<string, AvailabilitySlot[]>()
 const bookingsViewCache = new Map<string, ProviderBookingsView>()
 const journeyTelemetryEvents: JourneyTelemetryEvent[] = []
+
+const multiRegionService = new MultiRegionService()
+const waitlistService = new WaitlistService()
+const timeOffService = new TimeOffService()
+const resilientService = new ResilientService()
 
 const invalidateDynamicCaches = () => {
   availabilityByQueryCache.clear()
@@ -584,8 +593,9 @@ const notifications: NotificationService = {
 
 const health: HealthService = {
   async getSystemHealth(): Promise<ApiResult<SystemHealthSnapshot>> {
+    const aggregatedHealth = resilientService.getAggregatedHealth()
     return ok({
-      checkedAtIso: new Date('2026-01-20T08:15:00.000Z').toISOString(),
+      checkedAtIso: aggregatedHealth.timestamp.toISOString(),
       components: [
         { name: 'catalog', status: 'healthy', detail: 'Catalog reads are responsive.' },
         { name: 'availability', status: 'healthy', detail: 'Slot lookup is healthy.' },
@@ -595,7 +605,11 @@ const health: HealthService = {
           status: 'degraded',
           detail: 'Queue refresh may be delayed during heavy updates.',
         },
-        { name: 'payments', status: 'healthy', detail: 'Payment mock gateway is responsive.' },
+        {
+          name: 'payments',
+          status: aggregatedHealth.services.find((s) => s.serviceName === 'payment')?.status === 'ok' ? 'healthy' : 'degraded',
+          detail: 'Payment mock gateway with circuit breaker protection.',
+        },
         { name: 'notifications', status: 'healthy', detail: 'Lifecycle notifications are publishing.' },
       ],
     })
@@ -623,3 +637,10 @@ export const createMockServiceRegistry = (): ServiceRegistry => ({
   health,
   telemetry,
 })
+
+export {
+  multiRegionService,
+  waitlistService,
+  timeOffService,
+  resilientService,
+}

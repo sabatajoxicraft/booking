@@ -13,6 +13,7 @@ import type {
   ProviderOperationsService,
   TelemetryService,
 } from '@/services/interfaces'
+import { waitlistService } from '@/services/mock-services'
 import type { ApiErrorContract } from '@/types/api'
 import type { AvailabilitySlotId } from '@/types/availability-slot'
 import type { BookingIntent } from '@/types/booking'
@@ -154,6 +155,7 @@ export function CustomerJourneyPage({
     message: 'Your booking details are confirmed. Review our cancellation policy below before proceeding.',
   })
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card')
+  const [waitlistAdded, setWaitlistAdded] = useState(false)
   const [serviceQuery, setServiceQuery] = useState('')
   const [healthState, setHealthState] = useState<LoadState<SystemHealthSnapshot>>({ status: 'loading' })
   const trackedEventKeysRef = useRef<Set<string>>(new Set())
@@ -870,9 +872,37 @@ export function CustomerJourneyPage({
         {selectUiState.status === 'success' && (
           <>
             {selectUiState.data.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No available times for this selection. Try another date or staff member.
-              </p>
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  No available times for this selection. Try another date or staff member.
+                </p>
+                {!waitlistAdded && selectedServiceId && selectedDateIso && (
+                  <div className="rounded border border-amber-200 bg-amber-50 p-3">
+                    <p className="text-xs text-amber-900 mb-2">
+                      Or join the waitlist to get notified when availability opens up.
+                    </p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={async () => {
+                        await waitlistService.addToWaitlist(
+                          customerId,
+                          selectedServiceId,
+                          selectedDateIso,
+                          selectedDateIso,
+                        )
+                        setWaitlistAdded(true)
+                      }}
+                    >
+                      Join Waitlist
+                    </Button>
+                  </div>
+                )}
+                {waitlistAdded && (
+                  <p className="text-xs text-green-700 font-medium">✓ You're on the waitlist. We'll notify you when availability opens.</p>
+                )}
+              </div>
             ) : (
               <ul className="space-y-2">
                 {selectUiState.data.map((slot) => (
