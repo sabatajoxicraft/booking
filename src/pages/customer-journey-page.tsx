@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { StatusChip } from '@/components/atoms/status-chip'
 import { Button } from '@/components/ui/button'
@@ -7,19 +7,23 @@ import type {
   AvailabilityQueryService,
   BookingService,
   CatalogDiscoveryService,
+  HealthService,
   NotificationService,
   PaymentService,
   ProviderOperationsService,
+  TelemetryService,
 } from '@/services/interfaces'
 import type { ApiErrorContract } from '@/types/api'
 import type { AvailabilitySlotId } from '@/types/availability-slot'
 import type { BookingIntent } from '@/types/booking'
 import type { BusinessId } from '@/types/business'
 import type { CustomerId } from '@/types/customer'
+import type { SystemHealthSnapshot } from '@/types/health'
 import type { BookingNotification } from '@/types/notification'
 import type { PaymentMethod, PaymentOutcome } from '@/types/payment'
 import type { ServiceId } from '@/types/service'
 import type { StaffId } from '@/types/staff'
+import type { JourneyEventType, JourneyStep } from '@/types/telemetry'
 
 type LoadState<TData> =
   | { status: 'idle'; message: string }
@@ -81,6 +85,8 @@ interface CustomerJourneyPageProps {
   bookingService: BookingService
   paymentService: PaymentService
   notificationService: NotificationService
+  healthService: HealthService
+  telemetryService: TelemetryService
   providerService: ProviderOperationsService
   selectedBusinessId: BusinessId
   selectedServiceId: ServiceId | null
@@ -102,6 +108,8 @@ export function CustomerJourneyPage({
   bookingService,
   paymentService,
   notificationService,
+  healthService,
+  telemetryService,
   providerService,
   selectedBusinessId,
   selectedServiceId,
@@ -147,6 +155,8 @@ export function CustomerJourneyPage({
   })
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card')
   const [serviceQuery, setServiceQuery] = useState('')
+  const [healthState, setHealthState] = useState<LoadState<SystemHealthSnapshot>>({ status: 'loading' })
+  const trackedEventKeysRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
     const loadDiscover = async () => {
@@ -197,6 +207,20 @@ export function CustomerJourneyPage({
 
     void loadDiscover()
   }, [catalogService, selectedBusinessId])
+
+  useEffect(() => {
+    const loadHealth = async () => {
+      setHealthState({ status: 'loading' })
+      const response = await healthService.getSystemHealth()
+      if (response.status === 'failure') {
+        setHealthState({ status: 'error', error: response.error })
+        return
+      }
+      setHealthState({ status: 'success', data: response.data })
+    }
+
+    void loadHealth()
+  }, [healthService])
 
   useEffect(() => {
     if (!selectedServiceId || !selectedStaffId) {
@@ -281,6 +305,37 @@ export function CustomerJourneyPage({
     return selectUiState.data.find((slot) => slot.id === selectedSlotId) ?? null
   }, [selectUiState, selectedSlotId])
 
+  const recommendedService = useMemo(() => {
+    if (discoverState.status !== 'success') {
+      return null
+    }
+    if (selectedService) {
+      return selectedService
+    }
+
+    return discoverState.data.services[0] ?? null
+  }, [discoverState, selectedService])
+
+  const recommendedStaff = useMemo(() => {
+    if (discoverState.status !== 'success' || !recommendedService) {
+      return null
+    }
+
+    if (selectedStaff && selectedStaff.serviceIds.includes(recommendedService.id)) {
+      return selectedStaff
+    }
+
+    return discoverState.data.staff.find((staffMember) => staffMember.serviceIds.includes(recommendedService.id)) ?? null
+  }, [discoverState, recommendedService, selectedStaff])
+
+  const recommendedSlots = useMemo(() => {
+    if (selectUiState.status !== 'success') {
+      return []
+    }
+
+    return selectUiState.data.filter((slot) => slot.isBookable).slice(0, 2)
+  }, [selectUiState])
+
   const reviewState = useMemo(() => {
     if (discoverState.status !== 'success') {
       return { status: 'idle' as const, message: 'Load the service list to see verified customer reviews.' }
@@ -319,6 +374,64 @@ export function CustomerJourneyPage({
     discoverState.status === 'success' &&
     selectedServiceId !== null &&
     !filteredServices.some((service) => service.id === selectedServiceId)
+
+  const trackJourneyEvent = useCallback((step: JourneyStep, type: JourneyEventType, reason?: string) => {
+    const key = `${step}:${type}:${reason ?? 'none'}:${selectedBusinessId}:${selectedServiceId ?? 'none'}:${selectedSlotId ?? 'none'}`
+    if (trackedEventKeysRef.current.has(key)) {
+      return
+    }
+
+    trackedEventKeysRef.current.add(key)
+    void telemetryService.trackJourneyEvent({
+      atIso: new Date().toISOString(),
+      step,
+      type,
+      reason,
+      businessId: selectedBusinessId,
+      serviceId: selectedServiceId,
+      slotId: selectedSlotId,
+    })
+  }, [selectedBusinessId, selectedServiceId, selectedSlotId, telemetryService])
+
+  useEffect(() => {
+    if (discoverState.status === 'success') {
+      trackJourneyEvent('discover', 'step_completed')
+      return
+    }
+    if (discoverState.status === 'error') {
+      trackJourneyEvent('discover', 'dropoff', discoverState.error.code)
+    }
+  }, [discoverState, trackJourneyEvent])
+
+  useEffect(() => {
+    if (selectUiState.status === 'success') {
+      trackJourneyEvent('select', 'step_completed')
+      return
+    }
+    if (selectUiState.status === 'error') {
+      trackJourneyEvent('select', 'dropoff', selectUiState.error.code)
+    }
+  }, [selectUiState, trackJourneyEvent])
+
+  useEffect(() => {
+    if (checkoutState.status === 'success') {
+      trackJourneyEvent('checkout', 'step_completed')
+      return
+    }
+    if (checkoutState.status === 'error') {
+      trackJourneyEvent('checkout', 'dropoff', checkoutState.error.code)
+    }
+  }, [checkoutState, trackJourneyEvent])
+
+  useEffect(() => {
+    if (notifyState.status === 'success') {
+      trackJourneyEvent('notify', 'step_completed')
+      return
+    }
+    if (notifyState.status === 'error') {
+      trackJourneyEvent('notify', 'dropoff', notifyState.error.code)
+    }
+  }, [notifyState, trackJourneyEvent])
 
   const confirmState: { status: 'idle' | 'error' | 'success'; message: string } = useMemo(() => {
     if (discoverState.status !== 'success') {
@@ -575,6 +688,28 @@ export function CustomerJourneyPage({
       </header>
 
       <section className="space-y-2 rounded border p-3">
+        <h3 className="text-sm font-medium">Service health</h3>
+        {healthState.status === 'loading' && <p className="text-sm text-muted-foreground">Checking platform health...</p>}
+        {healthState.status === 'error' && (
+          <p className="text-sm text-destructive">
+            Health check unavailable ({healthState.error.code}). Booking can continue.
+          </p>
+        )}
+        {healthState.status === 'success' && (
+          <ul className="space-y-1">
+            {healthState.data.components.map((component) => (
+              <li key={component.name} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                <span className="capitalize">{component.name}</span>
+                <span className="text-muted-foreground">
+                  {component.status} · {component.detail}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="space-y-2 rounded border p-3">
         <h3 className="text-sm font-medium">Journey progress</h3>
         <ol className="space-y-2">
           {progressSteps.map((step) => (
@@ -621,6 +756,11 @@ export function CustomerJourneyPage({
             </div>
             <div className="space-y-2">
               <p className="text-sm font-medium">Service</p>
+              {recommendedService && recommendedStaff && (
+                <p className="text-xs text-muted-foreground">
+                  Recommended next choice: {recommendedService.name} with {recommendedStaff.displayName}.
+                </p>
+              )}
               <label className="flex max-w-sm flex-col gap-1 text-sm">
                 Search services
                 <div className="flex gap-2">
@@ -671,6 +811,11 @@ export function CustomerJourneyPage({
                   Your selected service is hidden by the current search. Clear the search to review it again.
                 </p>
               )}
+              {recommendedService && selectedServiceId !== recommendedService.id && (
+                <Button type="button" size="sm" variant="outline" onClick={() => onServiceSelect(recommendedService.id)}>
+                  Use recommended service
+                </Button>
+              )}
             </div>
             <div className="space-y-2">
               <p className="text-sm font-medium">Select a staff member</p>
@@ -707,6 +852,11 @@ export function CustomerJourneyPage({
             className="rounded border border-border bg-background px-2 py-1 text-sm"
           />
         </label>
+        {recommendedSlots.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            Recommended times: {recommendedSlots.map((slot) => new Date(slot.startIso).toLocaleTimeString()).join(', ')}.
+          </p>
+        )}
         {selectUiState.status === 'idle' && <p className="text-sm text-muted-foreground">{selectUiState.message}</p>}
         {selectUiState.status === 'loading' && (
           <p className="text-sm text-muted-foreground">Finding available times...</p>

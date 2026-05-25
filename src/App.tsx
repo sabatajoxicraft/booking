@@ -111,7 +111,13 @@ function App() {
         onIntentCreated={handleIntentCreated}
       />
     ),
-    provider: <ProviderOpsPage providerService={services.providerOps} businessId={selectedBusinessId} />,
+    provider: (
+      <ProviderOpsPage
+        providerService={services.providerOps}
+        healthService={services.health}
+        businessId={selectedBusinessId}
+      />
+    ),
     customer: (
       <CustomerJourneyPage
         catalogService={services.catalog}
@@ -119,6 +125,8 @@ function App() {
         bookingService={services.bookings}
         paymentService={services.payments}
         notificationService={services.notifications}
+        healthService={services.health}
+        telemetryService={services.telemetry}
         providerService={services.providerOps}
         selectedBusinessId={selectedBusinessId}
         selectedServiceId={selectedServiceId}
@@ -152,7 +160,7 @@ function App() {
       <AppShellTemplate
         title="Booking System"
         subtitle="Complete your appointment in minutes"
-        statusLabel="M2 planning"
+        statusLabel="M3 execution"
         routes={routes}
         activeRoute={activeRoute}
         onRouteSelect={setActiveRoute}

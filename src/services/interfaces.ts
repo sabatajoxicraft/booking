@@ -3,6 +3,7 @@ import type { ApiResult } from '@/types/api'
 import type { Booking, BookingId, BookingIntent, CancelBookingInput, CreateBookingIntentInput } from '@/types/booking'
 import type { BusinessSummary } from '@/types/business'
 import type { CustomerId } from '@/types/customer'
+import type { SystemHealthSnapshot } from '@/types/health'
 import type { BookingLifecycleEvent, BookingNotification } from '@/types/notification'
 import type { PaymentOutcome, PaymentRequest } from '@/types/payment'
 import type {
@@ -14,6 +15,7 @@ import type {
 } from '@/types/provider-ops'
 import type { ServiceDefinition } from '@/types/service'
 import type { StaffProfile } from '@/types/staff'
+import type { JourneyTelemetryEvent } from '@/types/telemetry'
 
 export interface CatalogDiscoveryService {
   listBusinesses(): Promise<ApiResult<BusinessSummary[]>>
@@ -50,6 +52,14 @@ export interface NotificationService {
   publishBookingLifecycleEvent(input: BookingLifecycleEvent): Promise<ApiResult<BookingNotification>>
 }
 
+export interface HealthService {
+  getSystemHealth(): Promise<ApiResult<SystemHealthSnapshot>>
+}
+
+export interface TelemetryService {
+  trackJourneyEvent(input: JourneyTelemetryEvent): Promise<ApiResult<{ recorded: true }>>
+}
+
 export interface ServiceRegistry {
   catalog: CatalogDiscoveryService
   availability: AvailabilityQueryService
@@ -57,4 +67,6 @@ export interface ServiceRegistry {
   providerOps: ProviderOperationsService
   payments: PaymentService
   notifications: NotificationService
+  health: HealthService
+  telemetry: TelemetryService
 }

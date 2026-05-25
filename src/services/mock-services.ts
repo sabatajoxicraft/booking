@@ -11,6 +11,7 @@ import type {
 } from '@/types/booking'
 import type { BusinessSummary } from '@/types/business'
 import type { CustomerId } from '@/types/customer'
+import type { SystemHealthSnapshot } from '@/types/health'
 import type {
   ProviderBookingActionResult,
   ProviderAvailabilityActionResult,
@@ -22,14 +23,17 @@ import type { BookingLifecycleEvent, BookingNotification } from '@/types/notific
 import type { PaymentOutcome, PaymentRequest } from '@/types/payment'
 import type { ServiceDefinition } from '@/types/service'
 import type { StaffProfile } from '@/types/staff'
+import type { JourneyTelemetryEvent } from '@/types/telemetry'
 import type {
   AvailabilityQueryService,
   BookingService,
   CatalogDiscoveryService,
+  HealthService,
   NotificationService,
   ProviderOperationsService,
   PaymentService,
   ServiceRegistry,
+  TelemetryService,
 } from '@/services/interfaces'
 
 const businesses: BusinessSummary[] = [
@@ -159,6 +163,7 @@ const servicesByBusinessCache = new Map<string, ServiceDefinition[]>()
 const staffByBusinessCache = new Map<string, StaffProfile[]>()
 const availabilityByQueryCache = new Map<string, AvailabilitySlot[]>()
 const bookingsViewCache = new Map<string, ProviderBookingsView>()
+const journeyTelemetryEvents: JourneyTelemetryEvent[] = []
 
 const invalidateDynamicCaches = () => {
   availabilityByQueryCache.clear()
@@ -577,6 +582,37 @@ const notifications: NotificationService = {
   },
 }
 
+const health: HealthService = {
+  async getSystemHealth(): Promise<ApiResult<SystemHealthSnapshot>> {
+    return ok({
+      checkedAtIso: new Date('2026-01-20T08:15:00.000Z').toISOString(),
+      components: [
+        { name: 'catalog', status: 'healthy', detail: 'Catalog reads are responsive.' },
+        { name: 'availability', status: 'healthy', detail: 'Slot lookup is healthy.' },
+        { name: 'bookings', status: 'healthy', detail: 'Booking operations are healthy.' },
+        {
+          name: 'provider-ops',
+          status: 'degraded',
+          detail: 'Queue refresh may be delayed during heavy updates.',
+        },
+        { name: 'payments', status: 'healthy', detail: 'Payment mock gateway is responsive.' },
+        { name: 'notifications', status: 'healthy', detail: 'Lifecycle notifications are publishing.' },
+      ],
+    })
+  },
+}
+
+const telemetry: TelemetryService = {
+  async trackJourneyEvent(input: JourneyTelemetryEvent): Promise<ApiResult<{ recorded: true }>> {
+    journeyTelemetryEvents.unshift(input)
+    if (journeyTelemetryEvents.length > 400) {
+      journeyTelemetryEvents.length = 400
+    }
+
+    return ok({ recorded: true })
+  },
+}
+
 export const createMockServiceRegistry = (): ServiceRegistry => ({
   catalog,
   availability,
@@ -584,4 +620,6 @@ export const createMockServiceRegistry = (): ServiceRegistry => ({
   providerOps,
   payments,
   notifications,
+  health,
+  telemetry,
 })

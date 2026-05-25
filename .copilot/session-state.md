@@ -1,17 +1,17 @@
 # Session State
 
 ## Active Context
-- **Mode:** M3 execution kickoff
-- **Current focus:** M3 lane execution readiness
-- **Delivery model:** Parallel lanes, then gated convergence
+- **Mode:** M3 closure
+- **Current focus:** Documentation consistency and merge readiness
+- **Delivery model:** Feature work complete, protected-branch merge workflow
 
 ## Working Queue
-1. Execute conversion lane tasks M3-C1 and M3-C2.
-2. Execute provider ops lane tasks M3-P1 and M3-P2.
-3. Execute reliability lane tasks M3-R1 and M3-R2.
-4. Maintain release-governance gating for branch/version/release decisions.
+1. Keep canonical booking flow ownership in `.copilot/prd.md`.
+2. Preserve board/document consistency for closed milestones.
+3. Complete protected-branch PR merge and release governance checks.
+4. Keep release-readiness automation active in CI.
 
-## Exit Criteria for M3 Kickoff Session
-- M3 board exists with concrete tasks, dependencies, and gate ownership.
-- Milestone status explicitly marks M3 as in progress.
-- Kickoff issue is synchronized with board scope and outcomes.
+## Exit Criteria for M3 Closure Session
+- M3 board and milestone artifacts reflect completed work.
+- Validation evidence remains aligned with latest implementation.
+- PR merge/release handling is the only remaining step.

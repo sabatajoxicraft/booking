@@ -3,11 +3,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { StatusChip } from '@/components/atoms/status-chip'
 import { Button } from '@/components/ui/button'
 import { filterItemsByQuery, isServiceSearchEmpty } from '@/lib/service-search'
-import type { ProviderOperationsService } from '@/services/interfaces'
+import type { HealthService, ProviderOperationsService } from '@/services/interfaces'
 import type { ApiErrorContract } from '@/types/api'
 import type { AvailabilitySlotState } from '@/types/availability-slot'
 import type { BookingStatus } from '@/types/booking'
 import type { BusinessId } from '@/types/business'
+import type { SystemHealthSnapshot } from '@/types/health'
 import type {
   ProviderAvailabilityActionResult,
   ProviderBookingActionResult,
@@ -25,6 +26,17 @@ type ProviderActionState<TData> =
   | { status: 'error'; error: ApiErrorContract }
   | { status: 'success'; result: TData }
 
+type HealthState =
+  | { status: 'loading' }
+  | { status: 'error'; error: ApiErrorContract }
+  | { status: 'success'; data: SystemHealthSnapshot }
+
+type BulkActionState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'error'; message: string }
+  | { status: 'success'; message: string }
+
 const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = {
   confirmed: 'Confirmed',
   pending: 'Pending',
@@ -35,11 +47,13 @@ const SLOT_STATE_OPTIONS: AvailabilitySlotState[] = ['open', 'held', 'blocked']
 
 interface ProviderOpsPageProps {
   providerService: ProviderOperationsService
+  healthService: HealthService
   businessId: BusinessId
 }
 
-export function ProviderOpsPage({ providerService, businessId }: ProviderOpsPageProps) {
+export function ProviderOpsPage({ providerService, healthService, businessId }: ProviderOpsPageProps) {
   const [viewState, setViewState] = useState<ProviderViewState>({ status: 'loading' })
+  const [healthState, setHealthState] = useState<HealthState>({ status: 'loading' })
   const [bookingActionState, setBookingActionState] = useState<ProviderActionState<ProviderBookingActionResult>>({
     status: 'idle',
   })
@@ -52,6 +66,9 @@ export function ProviderOpsPage({ providerService, businessId }: ProviderOpsPage
   const [selectedSlotId, setSelectedSlotId] = useState<string>('')
   const [nextSlotState, setNextSlotState] = useState<AvailabilitySlotState>('open')
   const [providerSearchQuery, setProviderSearchQuery] = useState('')
+  const [bulkReason, setBulkReason] = useState('')
+  const [bulkConfirmed, setBulkConfirmed] = useState(false)
+  const [bulkActionState, setBulkActionState] = useState<BulkActionState>({ status: 'idle' })
 
   useEffect(() => {
     let isMounted = true
@@ -78,6 +95,20 @@ export function ProviderOpsPage({ providerService, businessId }: ProviderOpsPage
       isMounted = false
     }
   }, [providerService, businessId])
+
+  useEffect(() => {
+    const loadHealth = async () => {
+      setHealthState({ status: 'loading' })
+      const response = await healthService.getSystemHealth()
+      if (response.status === 'failure') {
+        setHealthState({ status: 'error', error: response.error })
+        return
+      }
+      setHealthState({ status: 'success', data: response.data })
+    }
+
+    void loadHealth()
+  }, [healthService])
 
   const reloadView = async () => {
     setViewState({ status: 'loading' })
@@ -146,6 +177,28 @@ export function ProviderOpsPage({ providerService, businessId }: ProviderOpsPage
     )
   }, [providerSearchQuery, viewState])
 
+  const pendingBookings = viewState.status === 'success'
+    ? viewState.view.queueGroups.find((group) => group.status === 'pending')?.bookings ?? []
+    : []
+
+  const dayPlanCards = useMemo(() => {
+    if (viewState.status !== 'success') {
+      return []
+    }
+
+    return viewState.view.calendarDays.slice(0, 2).map((day, index) => {
+      const confirmed = day.bookings.filter((booking) => booking.status === 'confirmed').length
+      const pending = day.bookings.filter((booking) => booking.status === 'pending').length
+      return {
+        label: index === 0 ? 'Today' : 'Next day',
+        dateIso: day.dateIso,
+        total: day.bookings.length,
+        confirmed,
+        pending,
+      }
+    })
+  }, [viewState])
+
   const effectiveSelectedBookingId =
     selectedBookingId && bookingOptions.some((booking) => booking.bookingId === selectedBookingId)
       ? selectedBookingId
@@ -178,6 +231,45 @@ export function ProviderOpsPage({ providerService, businessId }: ProviderOpsPage
     await reloadView()
   }
 
+  const handleBulkCancelPending = async () => {
+    if (!bulkConfirmed) {
+      setBulkActionState({ status: 'error', message: 'Confirm the bulk action before proceeding.' })
+      return
+    }
+    if (bulkReason.trim().length < 8) {
+      setBulkActionState({ status: 'error', message: 'Provide a clear reason (at least 8 characters).' })
+      return
+    }
+    if (pendingBookings.length === 0) {
+      setBulkActionState({ status: 'error', message: 'No pending bookings are available for bulk cancellation.' })
+      return
+    }
+
+    setBulkActionState({ status: 'loading' })
+    let cancelledCount = 0
+
+    for (const booking of pendingBookings) {
+      const response = await providerService.updateBookingStatus({
+        bookingId: booking.bookingId,
+        nextStatus: 'cancelled',
+        actorId: 'provider_bulk_action',
+        reason: `bulk-cancel:${bulkReason.trim()}`,
+      })
+
+      if (response.status === 'success') {
+        cancelledCount += 1
+      }
+    }
+
+    await reloadView()
+    setBulkActionState({
+      status: 'success',
+      message: `Bulk action complete. Cancelled ${cancelledCount} pending booking(s).`,
+    })
+    setBulkConfirmed(false)
+    setBulkReason('')
+  }
+
   const handleSlotUpdate = async () => {
     if (!effectiveSelectedSlotId) {
       return
@@ -203,6 +295,48 @@ export function ProviderOpsPage({ providerService, businessId }: ProviderOpsPage
   return (
     <div className="space-y-6">
       <h2 className="text-lg font-medium">Admin: Manage Bookings</h2>
+
+      <section className="space-y-2 rounded border p-3">
+        <h3 className="text-sm font-medium">Service health</h3>
+        {healthState.status === 'loading' && <p className="text-sm text-muted-foreground">Checking platform health...</p>}
+        {healthState.status === 'error' && (
+          <p className="text-sm text-destructive">
+            Health check unavailable ({healthState.error.code}). Provider actions are still available.
+          </p>
+        )}
+        {healthState.status === 'success' && (
+          <ul className="space-y-1">
+            {healthState.data.components.map((component) => (
+              <li key={component.name} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                <span className="capitalize">{component.name}</span>
+                <span className="text-muted-foreground">
+                  {component.status} · {component.detail}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="space-y-2 rounded border p-3">
+        <h3 className="text-sm font-medium">Day plan summary</h3>
+        {dayPlanCards.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Day-plan summary will appear after provider data is loaded.</p>
+        ) : (
+          <div className="grid gap-2 md:grid-cols-2">
+            {dayPlanCards.map((card) => (
+              <div key={card.dateIso} className="rounded border p-2 text-sm">
+                <p className="font-medium">
+                  {card.label} · {card.dateIso}
+                </p>
+                <p className="text-muted-foreground">
+                  Total {card.total} · Confirmed {card.confirmed} · Pending {card.pending}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       <section className="space-y-2 rounded border p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -319,6 +453,40 @@ export function ProviderOpsPage({ providerService, businessId }: ProviderOpsPage
             </div>
           </div>
         )}
+      </section>
+
+      <section className="space-y-2 rounded border p-3">
+        <h3 className="text-sm font-medium">Bulk actions (guardrails enabled)</h3>
+        <p className="text-xs text-muted-foreground">
+          This action cancels all pending bookings for the selected business and requires explicit confirmation.
+        </p>
+        <label className="flex flex-col gap-1 text-sm">
+          Bulk action reason
+          <input
+            value={bulkReason}
+            onChange={(event) => setBulkReason(event.target.value)}
+            placeholder="Explain why this bulk action is needed"
+            className="rounded border border-border bg-background px-2 py-1 text-sm"
+          />
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={bulkConfirmed} onChange={(event) => setBulkConfirmed(event.target.checked)} />
+          I understand this will cancel all pending bookings.
+        </label>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() => void handleBulkCancelPending()}
+          disabled={bulkActionState.status === 'loading'}
+        >
+          Cancel all pending bookings
+        </Button>
+        {bulkActionState.status === 'loading' && (
+          <p className="text-sm text-muted-foreground">Applying bulk cancellation...</p>
+        )}
+        {bulkActionState.status === 'error' && <p className="text-sm text-destructive">{bulkActionState.message}</p>}
+        {bulkActionState.status === 'success' && <p className="text-sm text-foreground">{bulkActionState.message}</p>}
       </section>
 
       <section className="space-y-2 rounded border p-3">
