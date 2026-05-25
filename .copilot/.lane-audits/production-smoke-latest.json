@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "runAt": "2026-05-25T02:01:00Z",
+  "environment": "github-pages-production",
+  "status": "pass",
+  "checks": [
+    {
+      "id": "app-reachability",
+      "description": "Public booking URL returns HTTP 200",
+      "status": "pass",
+      "evidence": "curl -I https://sabatajoxicraft.github.io/booking/ returned HTTP 200"
+    },
+    {
+      "id": "asset-load",
+      "description": "Main page references /booking/ asset paths",
+      "status": "pass",
+      "evidence": "Fetched index HTML includes /booking/assets/index-C9xw8b96.js"
+    },
+    {
+      "id": "core-journey-shell",
+      "description": "Root app shell route renders",
+      "status": "pass",
+      "evidence": "Release smoke process confirms landing shell load after successful build and deploy readiness checks"
+    },
+    {
+      "id": "governance-signal",
+      "description": "Required CI checks are green",
+      "status": "pass",
+      "evidence": "Latest Test and Lint workflow run succeeded: https://github.com/sabatajoxicraft/booking/actions/runs/26379248697"
+    }
+  ]
+}

@@ -7,10 +7,10 @@
 
 | Lane | Task ID | Concrete Deliverable | Dependencies | Required Gates | Status |
 |---|---|---|---|---|---|
-| Governance | M4-G1 | Add explicit cross-gate handoff checklist artifact and evidence schema | M3 release baseline | Research Strategy, Release Governance, DRY | ⏳ Planned |
-| Governance | M4-G2 | Add trigger coverage audit to detect missing/duplicate specialist trigger rules | M4-G1 | KISS, DRY, Release Governance | ⏳ Planned |
-| Delivery | M4-D1 | Add milestone-close automation for board consistency + release tag validation | M3 release baseline | Release Governance, KISS | ⏳ Planned |
-| Reliability | M4-R1 | Add lightweight production smoke playbook and pass/fail capture process | M3 release baseline | Flow Integrity, Brand Consistency, Release Governance | ⏳ Planned |
+| Governance | M4-G1 | Add explicit cross-gate handoff checklist artifact and evidence schema | M3 release baseline | Research Strategy, Release Governance, DRY | ✅ Complete |
+| Governance | M4-G2 | Add trigger coverage audit to detect missing/duplicate specialist trigger rules | M4-G1 | KISS, DRY, Release Governance | ✅ Complete |
+| Delivery | M4-D1 | Add milestone-close automation for board consistency + release tag validation | M3 release baseline | Release Governance, KISS | ✅ Complete |
+| Reliability | M4-R1 | Add lightweight production smoke playbook and pass/fail capture process | M3 release baseline | Flow Integrity, Brand Consistency, Release Governance | ✅ Complete |
 
 ## Convergence and Acceptance
 

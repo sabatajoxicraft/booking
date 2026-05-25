@@ -8,10 +8,10 @@
 ## Working Queue
 1. Keep canonical booking flow ownership in `.copilot/prd.md`.
 2. Preserve board/document consistency for closed milestones while M4 executes.
-3. Deliver M4-G1 and M4-G2 before convergence sequence.
-4. Keep release-readiness automation active in CI and evidence artifacts.
+3. Execute M4 convergence sequence (M4-C1..M4-C4) now that lane deliverables are complete.
+4. Keep release-readiness automation active in CI and governance artifacts.
 
 ## Exit Criteria for M4 Kickoff Session
-- M4 board and milestone artifacts are aligned and active.
-- First governance lane deliverables (M4-G1, M4-G2) are complete.
-- Handoff ownership and trigger coverage are evidence-backed.
+- M4 board, lane statuses, and milestone/session artifacts are aligned.
+- M4 convergence steps M4-C1..M4-C4 are complete and evidenced.
+- Governance audits and smoke capture remain passing in CI.

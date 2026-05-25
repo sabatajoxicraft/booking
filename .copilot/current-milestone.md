@@ -11,9 +11,9 @@
 - **M4 (Governance acceleration):** 🟡 Kickoff in progress (`.copilot/m4-tasks.md`)
 
 ## Immediate Next Tasks
-1. **Execute M4-G1:** Establish cross-gate handoff checklist artifact + evidence schema.
-2. **Execute M4-G2:** Add trigger coverage audit for specialist gate completeness.
-3. **Run M4 convergence path:** Follow M4-C1..M4-C4 after lane completion.
+1. **Run M4-C1:** Perform integrated governance merge for completed M4 lanes.
+2. **Run M4-C2:** Execute specialist gate sweep with research-strategy and release-governance evidence.
+3. **Run M4-C3/C4:** Validate CI evidence and close milestone acceptance once convergence passes.
 
 ## M1 Closure Status
 ✅ All 6 rows complete (Golden Path + 3 Parallel Lanes + Convergence Gates + Acceptance)

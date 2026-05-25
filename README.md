@@ -24,7 +24,8 @@ Canonical booking steps are defined only in `.copilot/prd.md` under **Canonical 
 ## Quality Gates
 - Standards: `.copilot/instructions/coding-standards.md`
 - Trigger matrix: `.copilot/instructions/auto-triggers.md`
-- Specialist handlers: `.github/agents/kiss-gate.md`, `.github/agents/dry-gate.md`, `.github/agents/atomic-design-gate.md`, `.github/agents/flow-integrity-gate.md`, `.github/agents/brand-consistency-gate.md`
+- Specialist handlers: `.github/agents/kiss-gate.md`, `.github/agents/dry-gate.md`, `.github/agents/atomic-design-gate.md`, `.github/agents/ui-ux-specialist-gate.md`, `.github/agents/research-strategy-gate.md`, `.github/agents/flow-integrity-gate.md`, `.github/agents/brand-consistency-gate.md`, `.github/agents/release-governance-gate.md`
+- Governance audits: `npm run governance:audit` (handoff schema, trigger coverage, milestone-close checks, smoke artifact checks)
 
 ## Quick Start
 ```bash
