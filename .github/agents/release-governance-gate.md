@@ -9,6 +9,7 @@ Protect CI/CD, branch policy, release readiness, and version integrity before me
 - Branch context (source branch, target branch, and release-branch policy).
 - Version evidence (package/app version diff and bump rationale).
 - Release notes/changelog entries and artifact provenance evidence.
+- Research Strategy gate evidence when workflow/model/handoff policy changed.
 
 ## Triggers
 - Any workflow, branch-policy, release, or versioning change.
@@ -19,6 +20,7 @@ Protect CI/CD, branch policy, release readiness, and version integrity before me
 - Gate pass/fail report with explicit evidence links.
 - Required corrective actions with owners.
 - Release checklist status (ready/not-ready).
+- Confirmed handoff chain remains compliant with framework governance.
 
 ## Fail Criteria
 - CI is not green for required checks.
@@ -26,4 +28,5 @@ Protect CI/CD, branch policy, release readiness, and version integrity before me
 - Version bump is missing, invalid, or inconsistent with scope.
 - Release notes or changelog evidence is missing.
 - Artifact provenance evidence is missing.
+- Required Research Strategy gate evidence is missing for flow/model policy changes.
 - Identical CI failure repeats without strategy change.
