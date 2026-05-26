@@ -19,7 +19,7 @@ import type { AvailabilitySlotId } from '@/types/availability-slot'
 import type { BookingIntent } from '@/types/booking'
 import type { BusinessId } from '@/types/business'
 import type { CustomerId, CustomerProfile } from '@/types/customer'
-import { validateCustomerDetails } from '@/types/customer'
+import { prepareCustomerProfileInput, validateCustomerDetails } from '@/types/customer'
 import type { SystemHealthSnapshot } from '@/types/health'
 import type { BookingNotification } from '@/types/notification'
 import type { PaymentMethod, PaymentOutcome } from '@/types/payment'
@@ -574,11 +574,7 @@ export function CustomerJourneyPage({
       serviceId: selectedService.id,
       slotId: selectedSlot.id,
       customerId,
-      customerDetails: {
-        fullName: customerProfile.fullName.trim(),
-        email: customerProfile.email.trim(),
-        phoneE164: customerProfile.phoneE164?.trim() || undefined,
-      },
+      customerDetails: prepareCustomerProfileInput(customerProfile),
     })
 
     if (intentResponse.status === 'failure') {

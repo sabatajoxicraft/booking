@@ -8,7 +8,7 @@ import type { AvailabilitySlotId } from '@/types/availability-slot'
 import type { Booking, BookingIntent, BookingStatus, CreateBookingIntentInput } from '@/types/booking'
 import type { BusinessId } from '@/types/business'
 import type { CustomerProfile } from '@/types/customer'
-import { validateCustomerDetails } from '@/types/customer'
+import { prepareCustomerProfileInput, validateCustomerDetails } from '@/types/customer'
 import type { ServiceId } from '@/types/service'
 
 type BookingsLoadState =
@@ -114,11 +114,7 @@ export function BookingsPage({
       serviceId: selectedServiceId,
       slotId: selectedSlotId,
       customerId,
-      customerDetails: {
-        fullName: customerProfile.fullName.trim(),
-        email: customerProfile.email.trim(),
-        phoneE164: customerProfile.phoneE164?.trim() || undefined,
-      },
+      customerDetails: prepareCustomerProfileInput(customerProfile),
     }
 
     setIntentState({ status: 'loading' })
