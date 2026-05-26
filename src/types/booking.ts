@@ -1,6 +1,6 @@
 import type { AvailabilitySlotId } from '@/types/availability-slot'
 import type { BusinessId } from '@/types/business'
-import type { CustomerId } from '@/types/customer'
+import type { CustomerId, CustomerProfileInput } from '@/types/customer'
 import type { ServiceId } from '@/types/service'
 import type { StaffId } from '@/types/staff'
 
@@ -34,6 +34,7 @@ export interface CreateBookingIntentInput {
   serviceId: ServiceId
   slotId: AvailabilitySlotId
   customerId: CustomerId
+  customerDetails: CustomerProfileInput
 }
 
 export interface CancelBookingInput {

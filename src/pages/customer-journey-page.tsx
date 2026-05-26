@@ -18,7 +18,8 @@ import type { ApiErrorContract } from '@/types/api'
 import type { AvailabilitySlotId } from '@/types/availability-slot'
 import type { BookingIntent } from '@/types/booking'
 import type { BusinessId } from '@/types/business'
-import type { CustomerId } from '@/types/customer'
+import type { CustomerId, CustomerProfile } from '@/types/customer'
+import { prepareCustomerProfileInput, validateCustomerDetails } from '@/types/customer'
 import type { SystemHealthSnapshot } from '@/types/health'
 import type { BookingNotification } from '@/types/notification'
 import type { PaymentMethod, PaymentOutcome } from '@/types/payment'
@@ -94,7 +95,8 @@ interface CustomerJourneyPageProps {
   selectedStaffId: StaffId | null
   selectedDateIso: string
   selectedSlotId: AvailabilitySlotId | null
-  customerId: CustomerId
+  customerProfile: CustomerProfile
+  onProfileChange: (profile: CustomerProfile) => void
   onBusinessSelect: (businessId: BusinessId) => void
   onServiceSelect: (serviceId: ServiceId) => void
   onStaffSelect: (staffId: StaffId) => void
@@ -117,7 +119,8 @@ export function CustomerJourneyPage({
   selectedStaffId,
   selectedDateIso,
   selectedSlotId,
-  customerId,
+  customerProfile,
+  onProfileChange,
   onBusinessSelect,
   onServiceSelect,
   onStaffSelect,
@@ -125,6 +128,8 @@ export function CustomerJourneyPage({
   onSlotSelect,
   onIntentCreated,
 }: CustomerJourneyPageProps) {
+  const customerId: CustomerId = customerProfile.id
+
   const [discoverState, setDiscoverState] = useState<
     LoadState<{
       businesses: Array<{ id: BusinessId; name: string }>
@@ -355,6 +360,8 @@ export function CustomerJourneyPage({
     return { status: 'success' as const, reviews }
   }, [discoverState.status, selectedServiceId])
 
+  const customerDetailsState = useMemo(() => validateCustomerDetails(customerProfile), [customerProfile])
+
   const filteredServices = useMemo(() => {
     if (discoverState.status !== 'success') {
       return []
@@ -416,6 +423,16 @@ export function CustomerJourneyPage({
   }, [selectUiState, trackJourneyEvent])
 
   useEffect(() => {
+    if (customerDetailsState.status === 'success') {
+      trackJourneyEvent('customer-details', 'step_completed')
+      return
+    }
+    if (customerDetailsState.status === 'error') {
+      trackJourneyEvent('customer-details', 'dropoff', customerDetailsState.message)
+    }
+  }, [customerDetailsState, trackJourneyEvent])
+
+  useEffect(() => {
     if (checkoutState.status === 'success') {
       trackJourneyEvent('checkout', 'step_completed')
       return
@@ -445,9 +462,12 @@ export function CustomerJourneyPage({
     if (!selectedService || !selectedStaff || !selectedSlot) {
       return { status: 'error', message: 'Your selection is incomplete. Choose a service, staff member, and time.' }
     }
+    if (customerDetailsState.status !== 'success') {
+      return { status: 'idle', message: 'Complete your contact details to proceed to checkout.' }
+    }
 
     return { status: 'success', message: 'Your booking details are confirmed. Review our cancellation policy below before proceeding.' }
-  }, [discoverState.status, selectUiState.status, selectedService, selectedSlot, selectedStaff])
+  }, [customerDetailsState.status, discoverState.status, selectUiState.status, selectedService, selectedSlot, selectedStaff])
 
   const nextActionGuide = useMemo(() => {
     if (discoverState.status === 'loading') {
@@ -466,7 +486,13 @@ export function CustomerJourneyPage({
       return 'Next action: adjust date or service, then retry Select.'
     }
     if (!selectedSlot) {
-      return 'Next action: select a slot in Select, then confirm details.'
+      return 'Next action: select a slot in Select, then complete your customer details.'
+    }
+    if (customerDetailsState.status === 'error') {
+      return `Next action: fix your contact details — ${customerDetailsState.message}`
+    }
+    if (customerDetailsState.status !== 'success') {
+      return 'Next action: complete your contact details (name and email) to unlock checkout.'
     }
     if (checkoutState.status === 'loading') {
       return checkoutState.mode === 'pay'
@@ -496,7 +522,7 @@ export function CustomerJourneyPage({
     }
 
     return 'Next action: continue through the golden path steps in order.'
-  }, [checkoutState, discoverState.status, notifyState, paymentState.status, selectUiState.status, selectedSlot])
+  }, [checkoutState, customerDetailsState, discoverState.status, notifyState, paymentState.status, selectUiState.status, selectedSlot])
 
   const runNotifyOutcome = async (mode: CheckoutMode, intent: BookingIntent, paymentOutcome?: PaymentOutcome) => {
     setNotifyState({ status: 'loading' })
@@ -533,6 +559,14 @@ export function CustomerJourneyPage({
       return
     }
 
+    if (customerDetailsState.status !== 'success') {
+      setCheckoutState({
+        status: 'error',
+        error: { code: 'VALIDATION_ERROR', message: customerDetailsState.message },
+      })
+      return
+    }
+
     setCheckoutState({ status: 'loading', mode })
     setPaymentState({ status: 'idle' })
     const intentResponse = await bookingService.createBookingIntent({
@@ -540,6 +574,7 @@ export function CustomerJourneyPage({
       serviceId: selectedService.id,
       slotId: selectedSlot.id,
       customerId,
+      customerDetails: prepareCustomerProfileInput(customerProfile),
     })
 
     if (intentResponse.status === 'failure') {
@@ -630,15 +665,27 @@ export function CustomerJourneyPage({
               : discoverState.status === 'success'
                 ? 'active'
                 : 'pending',
-      note: selectedSlot ? 'Time selected and ready to confirm.' : 'Choose an available time slot.',
+      note: selectedSlot ? 'Time selected — complete your customer details to continue.' : 'Choose an available time slot.',
     },
     {
-      title: '3. Confirm details',
+      title: '3. Customer details',
+      status:
+        customerDetailsState.status === 'error'
+          ? 'error'
+          : customerDetailsState.status === 'success'
+            ? 'complete'
+            : selectedSlot
+              ? 'active'
+              : 'pending',
+      note: customerDetailsState.message,
+    },
+    {
+      title: '4. Confirm details',
       status: confirmState.status === 'error' ? 'error' : confirmState.status === 'success' ? 'complete' : 'pending',
       note: confirmState.message,
     },
     {
-      title: '4. Checkout',
+      title: '5. Checkout',
       status:
         checkoutState.status === 'error'
           ? 'error'
@@ -661,7 +708,7 @@ export function CustomerJourneyPage({
               : 'Use Pay now for the golden path; Place hold is fallback.',
     },
     {
-      title: '5. Notify / Outcome',
+      title: '6. Notify / Outcome',
       status:
         notifyState.status === 'error'
           ? 'error'
@@ -929,6 +976,62 @@ export function CustomerJourneyPage({
       </section>
 
       <section className="space-y-3 rounded border p-3">
+        <h3 className="text-sm font-medium">Customer details</h3>
+        <p className="text-xs text-muted-foreground">
+          Your contact details are used to confirm and communicate about your booking. Your customer ID is stable and
+          cannot be changed.
+        </p>
+        <p className="text-xs text-muted-foreground">Customer ID: {customerProfile.id}</p>
+        <div className="space-y-3">
+          <label className="flex max-w-sm flex-col gap-1 text-sm">
+            Full name <span className="text-destructive">*</span>
+            <input
+              type="text"
+              value={customerProfile.fullName}
+              onChange={(event) => {
+                onProfileChange({ ...customerProfile, fullName: event.target.value })
+              }}
+              placeholder="Your full name"
+              className="rounded border border-border bg-background px-2 py-1 text-sm"
+            />
+          </label>
+          <label className="flex max-w-sm flex-col gap-1 text-sm">
+            Email address <span className="text-destructive">*</span>
+            <input
+              type="email"
+              value={customerProfile.email}
+              onChange={(event) => {
+                onProfileChange({ ...customerProfile, email: event.target.value })
+              }}
+              placeholder="name@example.com"
+              className="rounded border border-border bg-background px-2 py-1 text-sm"
+            />
+          </label>
+          <label className="flex max-w-sm flex-col gap-1 text-sm">
+            Phone (optional, E.164 format)
+            <input
+              type="tel"
+              value={customerProfile.phoneE164 ?? ''}
+              onChange={(event) => {
+                onProfileChange({ ...customerProfile, phoneE164: event.target.value || undefined })
+              }}
+              placeholder="+27821234567"
+              className="rounded border border-border bg-background px-2 py-1 text-sm"
+            />
+          </label>
+          {customerDetailsState.status === 'error' && (
+            <p className="text-sm text-destructive">{customerDetailsState.message}</p>
+          )}
+          {customerDetailsState.status === 'success' && (
+            <p className="text-sm text-foreground">✓ {customerDetailsState.message}</p>
+          )}
+          {customerDetailsState.status === 'idle' && (
+            <p className="text-xs text-muted-foreground">{customerDetailsState.message}</p>
+          )}
+        </div>
+      </section>
+
+      <section className="space-y-3 rounded border p-3">
         <h3 className="text-sm font-medium">Customer reviews</h3>
         <p className="text-xs text-muted-foreground">
           Reviews are shown in a privacy-safe format without customer names or sensitive details.
@@ -969,6 +1072,10 @@ export function CustomerJourneyPage({
             <p className="text-sm text-muted-foreground">
               {new Date(selectedSlot.startIso).toLocaleString()} · {selectedService.priceLabel}
             </p>
+            <p className="text-sm text-muted-foreground">
+              {customerProfile.fullName} · {customerProfile.email}
+              {customerProfile.phoneE164 ? ` · ${customerProfile.phoneE164}` : ''}
+            </p>
             <p className="text-xs text-muted-foreground">
              Your booking can be cancelled up to 24 hours before the appointment time. Refund will be processed within 5 business days.
             </p>
@@ -995,7 +1102,7 @@ export function CustomerJourneyPage({
             type="button"
             size="sm"
             onClick={() => void handleCheckout('pay')}
-            disabled={confirmState.status !== 'success' || checkoutState.status === 'loading'}
+            disabled={confirmState.status !== 'success' || customerDetailsState.status !== 'success' || checkoutState.status === 'loading'}
           >
             Pay now
           </Button>

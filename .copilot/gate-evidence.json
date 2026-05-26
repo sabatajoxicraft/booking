@@ -45,6 +45,6 @@
     "failing": 0,
     "requirements": "All 4 convergence gates pass for M5 acceptance",
     "overallStatus": "PASS",
-    "nextStep": "Merge PR #8 to master and publish M5-complete release"
+    "nextStep": "M5 is released; prepare M6 only after mandate and session alignment"
   }
 }
